@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold" style="color:#0a1f3f">Document Library</h1>
+        <a href="/upload" class="btn-iaf btn-iaf-primary">+ Upload New</a>
+    </div>
+
+    <div id="document-list" class="space-y-4">
+        <div class="text-center py-8" style="color:#64748b">Loading documents...</div>
+    </div>
+</div>
+
+<div id="hierarchy-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col" style="background:#ffffff">
+            <div class="flex justify-between items-center p-6 border-b" style="border-color:#e2e8f0">
+                <h2 id="modal-title" class="text-xl font-semibold" style="color:#0a1f3f">Document Structure</h2>
+                <button onclick="closeHierarchy()" class="text-2xl" style="color:#94a3b8" onmouseover="this.style.color='#475569'" onmouseout="this.style.color='#94a3b8'">&times;</button>
+            </div>
+            <div id="hierarchy-content" class="p-6 overflow-y-auto">
+                <div class="text-center py-4" style="color:#64748b">Loading structure...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

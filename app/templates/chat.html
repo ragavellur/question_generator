@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex gap-6" style="min-height: calc(100vh - 10rem);">
+    <!-- Session sidebar -->
+    <div class="w-64 flex-shrink-0 rounded-xl shadow-sm flex flex-col" style="background:#ffffff; max-height: calc(100vh - 10rem);">
+        <div class="p-3 border-b" style="border-color:#e2e8f0">
+            <button id="new-chat-btn" class="btn-iaf btn-iaf-primary w-full text-sm py-2">
+                + New Chat
+            </button>
+        </div>
+        <div id="session-list" class="flex-1 overflow-y-auto p-2 space-y-1 text-sm">
+            <div style="color:#94a3b8" class="text-center py-8">No sessions yet</div>
+        </div>
+    </div>
+
+    <!-- Chat area -->
+    <div class="flex-1 rounded-xl shadow-sm flex flex-col" style="background:#ffffff; max-height: calc(100vh - 10rem);">
+        <!-- Doc selector -->
+        <div class="p-4 border-b flex items-center space-x-4" style="border-color:#e2e8f0">
+            <label class="text-sm font-medium whitespace-nowrap" style="color:#1e293b">Document:</label>
+            <select id="chat-doc-select" class="flex-1 border rounded-lg px-3 py-2 text-sm" style="border-color:#d1d5db; background:#ffffff; color:#1e293b">
+                <option value="">Select a document...</option>
+            </select>
+        </div>
+
+        <!-- Messages -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="text-center py-12" style="color:#94a3b8">
+                <div class="text-4xl mb-3">💬</div>
+                <p class="text-sm">Select a document and start asking questions</p>
+            </div>
+        </div>
+
+        <!-- Input -->
+        <div class="p-4 border-t" style="border-color:#e2e8f0">
+            <form id="chat-form" class="flex items-center space-x-3">
+                <input
+                    id="chat-input"
+                    type="text"
+                    placeholder="Ask a question about this document..."
+                    class="flex-1 border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style="border-color:#d1d5db; background:#f8fafc; color:#1e293b"
+                    disabled
+                >
+                <button
+                    id="chat-send-btn"
+                    type="submit"
+                    class="btn-iaf btn-iaf-primary px-5 py-2.5 text-sm"
+                    disabled
+                >
+                    Send
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="source-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col" style="background:#ffffff">
+            <div class="flex justify-between items-center p-4 border-b" style="border-color:#e2e8f0">
+                <h3 class="text-sm font-semibold" style="color:#0a1f3f">Source Content</h3>
+                <button onclick="closeSourceModal()" class="text-2xl leading-none" style="color:#94a3b8">&times;</button>
+            </div>
+            <div id="source-modal-content" class="p-4 overflow-y-auto text-sm text-gray-700 whitespace-pre-wrap"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/chat.js"></script>
+{% endblock %}
