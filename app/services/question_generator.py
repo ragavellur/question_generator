@@ -3,14 +3,11 @@ import random
 import asyncio
 from collections import defaultdict
 
-from app.config import DOMAIN_DEFINITIONS, SUBTYPE_INSTRUCTIONS
+from app.config import DOMAIN_DEFINITIONS, SUBTYPE_INSTRUCTIONS, CHUNKS_PER_TYPE_CALL, CHUNK_CONTENT_MAX_CHARS
 from app.services.llm_client import chat, _extract_json
 from app.services.vector_store import query_chunks, get_chunks_by_ids, get_chunks_by_filter
 from app.services.embedding import prepare_query
 from app.models.schemas import QuestionConfig
-
-
-from app.config import CHUNKS_PER_TYPE_CALL
 
 TOKEN_BUDGETS = {
     "mcq": 500,
@@ -52,7 +49,9 @@ def _build_prompt_for_type(
             header += f" Chapter {meta.get('chapter', '?')}: {meta['chapter_title']}"
         if meta.get("section_title"):
             header += f" | Section {meta.get('section', '?')}: {meta['section_title']}"
-        content = chunk['content'][:1200] if len(chunk['content']) > 1200 else chunk['content']
+        content = chunk['content']
+        if CHUNK_CONTENT_MAX_CHARS > 0 and len(content) > CHUNK_CONTENT_MAX_CHARS:
+            content = content[:CHUNK_CONTENT_MAX_CHARS]
         context_text += f"\n\n{header}\n{content}"
 
     domain_defs = "\n\n".join(

@@ -24,6 +24,7 @@ PROFILE_CACHE_DIR = os.path.join(BASE_DIR, "chroma_db", "profiles")
 
 RAG_CHUNK_COUNT = int(os.getenv("RAG_CHUNK_COUNT", "5"))
 CHUNKS_PER_TYPE_CALL = int(os.getenv("CHUNKS_PER_TYPE_CALL", "8"))
+CHUNK_CONTENT_MAX_CHARS = int(os.getenv("CHUNK_CONTENT_MAX_CHARS", "1200"))
 GROQ_RAG_CHUNK_COUNT = int(os.getenv("GROQ_RAG_CHUNK_COUNT", "5"))
 
 BM25_ENABLED = True
