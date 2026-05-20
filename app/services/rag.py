@@ -1,7 +1,7 @@
 import httpx
 from typing import Callable, Coroutine
 
-from app.config import OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL, OLLAMA_RAG_MODEL, RAG_CHUNK_COUNT
+from app.config import OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL, OLLAMA_RAG_MODEL, GROQ_API_KEY, GROQ_MODEL, RAG_CHUNK_COUNT, GROQ_RAG_CHUNK_COUNT
 from app.models.state import get_chunks_collection
 from app.services.llm_client import chat_with_messages
 
@@ -27,9 +27,10 @@ async def rag_query(
     history: list[dict] | None = None,
     max_chunks: int | None = None,
     on_progress: Callable[[str, str, int], Coroutine] | None = None,
+    provider: str = "ollama",
 ) -> dict:
     if max_chunks is None:
-        max_chunks = RAG_CHUNK_COUNT
+        max_chunks = GROQ_RAG_CHUNK_COUNT if provider == "groq" else RAG_CHUNK_COUNT
 
     async def _progress(stage: str, message: str, pct: int):
         if on_progress:
@@ -63,15 +64,15 @@ async def rag_query(
         ch_title = meta.get("chapter_title", "") or f"Chapter {meta.get('chapter', '?')}"
         sec_title = meta.get("section_title", "") or (f"Section {meta.get('section', '?')}" if meta.get("section") else "")
         label = f"{ch_title}{' / ' + sec_title if sec_title else ''}"
-        # Truncate content to first 800 tokens (~3200 chars) to keep prompt manageable
-        truncated = content[:3200] if len(content) > 3200 else content
+        # Truncate content to keep prompt manageable
+        truncated = content[:2000] if len(content) > 2000 else content
         context_parts.append(f"--- Chunk {i + 1} ({label}) ---\n{truncated}")
         sources.append({
             "chunk_id": results["ids"][0][i],
             "chapter": meta.get("chapter", ""),
             "section": meta.get("section", ""),
             "title": label,
-            "content_preview": truncated[:300],
+            "content_preview": truncated[:400],
             "page_start": meta.get("page_start", 0),
             "page_end": meta.get("page_end", 0),
         })
@@ -94,6 +95,23 @@ async def rag_query(
     user_prompt = f"Context from the document:\n{context}\n\nQuestion: {question}"
     messages.append({"role": "user", "content": user_prompt})
 
-    answer = await chat_with_messages(messages, model=OLLAMA_RAG_MODEL, temperature=0.0)
+    if provider == "groq":
+        if not GROQ_API_KEY:
+            return {"answer": "Groq API key not configured. Set GROQ_API_KEY env var.", "sources": []}
+        from groq import AsyncGroq
+        client = AsyncGroq(api_key=GROQ_API_KEY)
+        groq_messages = [{"role": "system", "content": system_prompt}]
+        if history:
+            for h in history[-4:]:
+                groq_messages.append({"role": h["role"], "content": h["content"]})
+        groq_messages.append({"role": "user", "content": user_prompt})
+        completion = await client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=groq_messages,
+            temperature=0.0,
+        )
+        answer = completion.choices[0].message.content
+    else:
+        answer = await chat_with_messages(messages, model=OLLAMA_RAG_MODEL, temperature=0.0)
 
     return {"answer": answer, "sources": sources}

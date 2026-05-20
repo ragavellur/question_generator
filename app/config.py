@@ -11,6 +11,9 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b-instruct")
 OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 OLLAMA_RAG_MODEL = os.getenv("OLLAMA_RAG_MODEL", "llama3.2:3b")
 
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-4-scout-17b-16e-instruct")
+
 CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", os.path.join(BASE_DIR, "chroma_db"))
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.join(BASE_DIR, "uploaded_docs"))
 
@@ -20,6 +23,7 @@ CHUNK_MAX_TOKENS = 1200
 PROFILE_CACHE_DIR = os.path.join(BASE_DIR, "chroma_db", "profiles")
 
 RAG_CHUNK_COUNT = int(os.getenv("RAG_CHUNK_COUNT", "5"))
+GROQ_RAG_CHUNK_COUNT = int(os.getenv("GROQ_RAG_CHUNK_COUNT", "15"))
 
 FRONT_MATTER_KEYWORDS = [
     "cover", "half title", "title page", "copyright", "dedication",

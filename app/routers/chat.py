@@ -15,6 +15,7 @@ class ChatRequest(BaseModel):
     doc_id: str
     message: str
     history: list[dict] = []
+    provider: str = "ollama"
 
 
 @router.post("/chat")
@@ -45,6 +46,7 @@ async def chat_start(req: ChatRequest):
                 question=req.message.strip(),
                 history=req.history,
                 on_progress=on_progress,
+                provider=req.provider,
             )
             _tasks[task_id].update({
                 "status": "done",
