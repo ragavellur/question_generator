@@ -64,15 +64,15 @@ async def rag_query(
         ch_title = meta.get("chapter_title", "") or f"Chapter {meta.get('chapter', '?')}"
         sec_title = meta.get("section_title", "") or (f"Section {meta.get('section', '?')}" if meta.get("section") else "")
         label = f"{ch_title}{' / ' + sec_title if sec_title else ''}"
-        # Truncate content to first 800 tokens (~3200 chars) to keep prompt manageable
-        truncated = content[:3200] if len(content) > 3200 else content
+        # Truncate content to keep prompt manageable
+        truncated = content[:2000] if len(content) > 2000 else content
         context_parts.append(f"--- Chunk {i + 1} ({label}) ---\n{truncated}")
         sources.append({
             "chunk_id": results["ids"][0][i],
             "chapter": meta.get("chapter", ""),
             "section": meta.get("section", ""),
             "title": label,
-            "content_preview": truncated[:300],
+            "content_preview": truncated[:400],
             "page_start": meta.get("page_start", 0),
             "page_end": meta.get("page_end", 0),
         })
