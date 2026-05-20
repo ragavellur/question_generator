@@ -52,7 +52,8 @@ def _build_prompt_for_type(
             header += f" Chapter {meta.get('chapter', '?')}: {meta['chapter_title']}"
         if meta.get("section_title"):
             header += f" | Section {meta.get('section', '?')}: {meta['section_title']}"
-        context_text += f"\n\n{header}\n{chunk['content']}"
+        content = chunk['content'][:1200] if len(chunk['content']) > 1200 else chunk['content']
+        context_text += f"\n\n{header}\n{content}"
 
     domain_defs = "\n\n".join(
         f"### {d.capitalize()}\n{DOMAIN_DEFINITIONS.get(d, '')}"
