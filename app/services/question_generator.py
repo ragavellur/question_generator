@@ -10,6 +10,8 @@ from app.services.embedding import prepare_query
 from app.models.schemas import QuestionConfig
 
 
+CHUNKS_PER_TYPE_CALL = 15
+
 TOKEN_BUDGETS = {
     "mcq": 500,
     "truefalse": 150,
@@ -109,6 +111,12 @@ RULES:
 - Return ONLY valid JSON, no explanation."""
 
 
+def _sample_chunks(chunks: list[dict], n: int = CHUNKS_PER_TYPE_CALL) -> list[dict]:
+    if len(chunks) <= n:
+        return chunks
+    return random.sample(chunks, n)
+
+
 async def _call_type(qt: str, count: int, context_chunks: list[dict], domains: list[str], difficulty: str | None) -> list[dict]:
     prompt = _build_prompt_for_type(qt, count, context_chunks, domains, difficulty)
     per_q = TOKEN_BUDGETS.get(qt, 250)
@@ -158,7 +166,8 @@ async def generate_questions_stream(config: QuestionConfig):
                 await queue.put({"event": "status", "message": f"Generating {config.count_per_type} {label} question(s)..."})
 
                 try:
-                    questions = await _call_type(qt, config.count_per_type + 1, context_chunks, config.domains, config.difficulty)
+                    batch = _sample_chunks(context_chunks)
+                    questions = await _call_type(qt, config.count_per_type + 1, batch, config.domains, config.difficulty)
 
                     new_qs = []
                     for q in questions:
@@ -196,7 +205,8 @@ async def generate_questions_stream(config: QuestionConfig):
                     label = _type_label(qt)
                     await queue.put({"event": "status", "message": f"Generating {need} more {label} question(s)..."})
                     try:
-                        questions = await _call_type(qt, need + 2, context_chunks, config.domains, config.difficulty)
+                        batch = _sample_chunks(context_chunks)
+                        questions = await _call_type(qt, need + 2, batch, config.domains, config.difficulty)
                         for q in questions:
                             qtype = q.get("question_type", "").lower().replace(" ", "_").replace("/", "_")
                             if qtype != qt:
