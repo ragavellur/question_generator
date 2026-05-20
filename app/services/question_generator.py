@@ -10,7 +10,7 @@ from app.services.embedding import prepare_query
 from app.models.schemas import QuestionConfig
 
 
-CHUNKS_PER_TYPE_CALL = 15
+from app.config import CHUNKS_PER_TYPE_CALL
 
 TOKEN_BUDGETS = {
     "mcq": 500,
