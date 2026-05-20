@@ -31,6 +31,7 @@ function createSession(docId, docName) {
         updated_at: new Date().toISOString(),
         messages: [],
         provider: 'ollama',
+        hybrid_enabled: false,
     };
     sessions.unshift(session);
     saveSessions();
@@ -80,7 +81,7 @@ function renderSessionList() {
                  onclick="selectSession('${s.id}')">
                 <div class="flex-1 min-w-0">
                     <div class="text-sm font-medium truncate" style="color:${active ? '#1e4d8c' : '#1e293b'}">${escapeHtml(s.title)}</div>
-                    <div class="text-xs truncate" style="color:#94a3b8">${escapeHtml(s.doc_name || 'Unknown')} ${s.provider === 'groq' ? '<span class="ml-1 text-blue-500 font-medium">[Groq]</span>' : '<span class="ml-1 text-gray-400">[Local]</span>'}</div>
+                    <div class="text-xs truncate" style="color:#94a3b8">${escapeHtml(s.doc_name || 'Unknown')} ${s.provider === 'groq' ? '<span class="ml-1 text-blue-500 font-medium">[Groq]</span>' : '<span class="ml-1 text-gray-400">[Local]</span>'}${s.hybrid_enabled ? ' <span class="text-green-600 font-medium">[Hybrid]</span>' : ''}</div>
                 </div>
                 <button onclick="event.stopPropagation(); deleteSession('${s.id}')"
                         class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-lg leading-none">&times;</button>
@@ -104,6 +105,8 @@ function clearChatArea() {
     document.getElementById('chat-doc-select').value = '';
     const ps = document.getElementById('chat-provider-select');
     if (ps) ps.value = 'ollama';
+    const ht = document.getElementById('chat-hybrid-toggle');
+    if (ht) ht.checked = false;
 }
 
 function loadSession(id) {
@@ -115,10 +118,14 @@ function loadSession(id) {
     const input = document.getElementById('chat-input');
     const sendBtn = document.getElementById('chat-send-btn');
     const providerSelect = document.getElementById('chat-provider-select');
+    const hybridToggle = document.getElementById('chat-hybrid-toggle');
 
     docSelect.value = session.doc_id || '';
     if (providerSelect && session.provider) {
         providerSelect.value = session.provider;
+    }
+    if (hybridToggle) {
+        hybridToggle.checked = session.hybrid_enabled || false;
     }
     container.innerHTML = '';
 
@@ -325,6 +332,7 @@ async function sendMessage() {
                 message: message,
                 history: history,
                 provider: session.provider || 'ollama',
+                hybrid: session.hybrid_enabled || false,
             }),
         });
 
@@ -419,6 +427,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const providerSelect = document.getElementById('chat-provider-select');
+    const hybridToggle = document.getElementById('chat-hybrid-toggle');
 
     if (providerSelect) {
         const session = getCurrentSession();
@@ -430,6 +439,21 @@ document.addEventListener('DOMContentLoaded', function () {
             if (s) {
                 s.provider = this.value;
                 saveSessions();
+            }
+        });
+    }
+
+    if (hybridToggle) {
+        const session = getCurrentSession();
+        if (session) {
+            hybridToggle.checked = session.hybrid_enabled || false;
+        }
+        hybridToggle.addEventListener('change', function () {
+            const s = getCurrentSession();
+            if (s) {
+                s.hybrid_enabled = this.checked;
+                saveSessions();
+                renderSessionList();
             }
         });
     }

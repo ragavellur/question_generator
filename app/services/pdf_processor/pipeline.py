@@ -7,6 +7,7 @@ from app.services.pdf_processor.chunker import chunk_document
 from app.services.pdf_processor.llm_verifier import verify_sample
 from app.services.embedding import embed_chunks
 from app.services.vector_store import store_chunks
+from app.services.bm25_store import index_document
 
 from app.models.schemas import DocumentProfile
 from app.models.state import set_processing_status
@@ -136,6 +137,7 @@ async def process_pdf(pdf_path: str, doc_id: str, doc_name: str):
 
         chapter_data = [c.model_dump() for c in chapters]
         store_chunks(chunks, doc_id, doc_name, chapter_data)
+        index_document(doc_id, chunks)
 
         set_processing_status(doc_id, "done", 100, "Processing complete!")
 

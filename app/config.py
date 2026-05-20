@@ -25,6 +25,14 @@ PROFILE_CACHE_DIR = os.path.join(BASE_DIR, "chroma_db", "profiles")
 RAG_CHUNK_COUNT = int(os.getenv("RAG_CHUNK_COUNT", "5"))
 GROQ_RAG_CHUNK_COUNT = int(os.getenv("GROQ_RAG_CHUNK_COUNT", "5"))
 
+BM25_ENABLED = True
+BM25_INDEX_DIR = os.path.join(BASE_DIR, "chroma_db", "bm25")
+
+RERANKER_ENABLED = True
+RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+RERANKER_RETRIEVE_COUNT = 30
+RERANKER_TOP_K = 5
+
 FRONT_MATTER_KEYWORDS = [
     "cover", "half title", "title page", "copyright", "dedication",
     "about the author", "contents", "table of contents", "preface",
