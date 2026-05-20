@@ -30,6 +30,7 @@ function createSession(docId, docName) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         messages: [],
+        provider: 'ollama',
     };
     sessions.unshift(session);
     saveSessions();
@@ -79,7 +80,7 @@ function renderSessionList() {
                  onclick="selectSession('${s.id}')">
                 <div class="flex-1 min-w-0">
                     <div class="text-sm font-medium truncate" style="color:${active ? '#1e4d8c' : '#1e293b'}">${escapeHtml(s.title)}</div>
-                    <div class="text-xs truncate" style="color:#94a3b8">${escapeHtml(s.doc_name || 'Unknown')}</div>
+                    <div class="text-xs truncate" style="color:#94a3b8">${escapeHtml(s.doc_name || 'Unknown')} ${s.provider === 'groq' ? '<span class="ml-1 text-blue-500 font-medium">[Groq]</span>' : '<span class="ml-1 text-gray-400">[Local]</span>'}</div>
                 </div>
                 <button onclick="event.stopPropagation(); deleteSession('${s.id}')"
                         class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-2 text-lg leading-none">&times;</button>
@@ -101,6 +102,8 @@ function clearChatArea() {
     document.getElementById('chat-input').disabled = true;
     document.getElementById('chat-send-btn').disabled = true;
     document.getElementById('chat-doc-select').value = '';
+    const ps = document.getElementById('chat-provider-select');
+    if (ps) ps.value = 'ollama';
 }
 
 function loadSession(id) {
@@ -111,8 +114,12 @@ function loadSession(id) {
     const docSelect = document.getElementById('chat-doc-select');
     const input = document.getElementById('chat-input');
     const sendBtn = document.getElementById('chat-send-btn');
+    const providerSelect = document.getElementById('chat-provider-select');
 
     docSelect.value = session.doc_id || '';
+    if (providerSelect && session.provider) {
+        providerSelect.value = session.provider;
+    }
     container.innerHTML = '';
 
     if (session.messages.length === 0) {
@@ -317,6 +324,7 @@ async function sendMessage() {
                 doc_id: session.doc_id,
                 message: message,
                 history: history,
+                provider: session.provider || 'ollama',
             }),
         });
 
@@ -407,6 +415,22 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!docId) return;
             const session = createSession(docId, docName);
             selectSession(session.id);
+        });
+    }
+
+    const providerSelect = document.getElementById('chat-provider-select');
+
+    if (providerSelect) {
+        const session = getCurrentSession();
+        if (session && session.provider) {
+            providerSelect.value = session.provider;
+        }
+        providerSelect.addEventListener('change', function () {
+            const s = getCurrentSession();
+            if (s) {
+                s.provider = this.value;
+                saveSessions();
+            }
         });
     }
 

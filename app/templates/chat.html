@@ -16,11 +16,16 @@
 
     <!-- Chat area -->
     <div class="flex-1 rounded-xl shadow-sm flex flex-col" style="background:#ffffff; max-height: calc(100vh - 10rem);">
-        <!-- Doc selector -->
+        <!-- Doc selector + Provider -->
         <div class="p-4 border-b flex items-center space-x-4" style="border-color:#e2e8f0">
             <label class="text-sm font-medium whitespace-nowrap" style="color:#1e293b">Document:</label>
             <select id="chat-doc-select" class="flex-1 border rounded-lg px-3 py-2 text-sm" style="border-color:#d1d5db; background:#ffffff; color:#1e293b">
                 <option value="">Select a document...</option>
+            </select>
+            <label class="text-sm font-medium whitespace-nowrap" style="color:#1e293b">Engine:</label>
+            <select id="chat-provider-select" class="border rounded-lg px-3 py-2 text-sm" style="border-color:#d1d5db; background:#ffffff; color:#1e293b">
+                <option value="ollama">Local (Ollama)</option>
+                <option value="groq">Groq (Cloud)</option>
             </select>
         </div>
 
