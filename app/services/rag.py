@@ -1,7 +1,7 @@
 import httpx
 from typing import Callable, Coroutine
 
-from app.config import OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL, OLLAMA_RAG_MODEL, GROQ_API_KEY, GROQ_MODEL, RAG_CHUNK_COUNT
+from app.config import OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL, OLLAMA_RAG_MODEL, GROQ_API_KEY, GROQ_MODEL, RAG_CHUNK_COUNT, GROQ_RAG_CHUNK_COUNT
 from app.models.state import get_chunks_collection
 from app.services.llm_client import chat_with_messages
 
@@ -30,7 +30,7 @@ async def rag_query(
     provider: str = "ollama",
 ) -> dict:
     if max_chunks is None:
-        max_chunks = RAG_CHUNK_COUNT
+        max_chunks = GROQ_RAG_CHUNK_COUNT if provider == "groq" else RAG_CHUNK_COUNT
 
     async def _progress(stage: str, message: str, pct: int):
         if on_progress:
