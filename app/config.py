@@ -3,7 +3,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(BASE_DIR, "models")
 
-N_CTX = int(os.getenv("N_CTX", "16384"))
+N_CTX = int(os.getenv("N_CTX", "8192"))
 N_THREADS = int(os.getenv("N_THREADS", "8"))
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
@@ -20,15 +20,17 @@ UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.join(BASE_DIR, "uploaded_docs"))
 CHUNK_MIN_TOKENS = 400
 CHUNK_MAX_TOKENS = 1200
 
-PROFILE_CACHE_DIR = os.path.join(BASE_DIR, "chroma_db", "profiles")
+PROFILE_CACHE_DIR = os.path.join(CHROMA_DB_PATH, "profiles")
 
 RAG_CHUNK_COUNT = int(os.getenv("RAG_CHUNK_COUNT", "5"))
 CHUNKS_PER_TYPE_CALL = int(os.getenv("CHUNKS_PER_TYPE_CALL", "8"))
 CHUNK_CONTENT_MAX_CHARS = int(os.getenv("CHUNK_CONTENT_MAX_CHARS", "1200"))
+
+LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "3600"))
 GROQ_RAG_CHUNK_COUNT = int(os.getenv("GROQ_RAG_CHUNK_COUNT", "5"))
 
 BM25_ENABLED = True
-BM25_INDEX_DIR = os.path.join(BASE_DIR, "chroma_db", "bm25")
+BM25_INDEX_DIR = os.path.join(CHROMA_DB_PATH, "bm25")
 
 RERANKER_ENABLED = True
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")

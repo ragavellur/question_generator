@@ -341,14 +341,32 @@ async function sendMessage() {
             throw new Error(err.detail || 'Request failed');
         }
 
-        const { task_id } = await resp.json();
+        let { task_id } = await resp.json();
         let done = false;
 
         while (!done) {
             await new Promise(r => setTimeout(r, 1500));
 
             const statusResp = await fetch(`/api/chat/${task_id}`);
-            if (statusResp.status === 404) throw new Error('Server restarted — please ask again');
+            if (statusResp.status === 404) {
+                const retryResp = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        doc_id: session.doc_id,
+                        message: message,
+                        history: history,
+                        provider: session.provider || 'ollama',
+                        hybrid: session.hybrid_enabled || false,
+                    }),
+                });
+                if (retryResp.ok) {
+                    const retryData = await retryResp.json();
+                    task_id = retryData.task_id;
+                    continue;
+                }
+                throw new Error('Task expired — could not auto-restart. Please ask again.');
+            }
             if (!statusResp.ok) throw new Error('Status check failed');
 
             const task = await statusResp.json();

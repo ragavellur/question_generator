@@ -192,7 +192,7 @@ const fileInput = document.getElementById('file-input');
                 }
 
                 if (window.updateGenerateButton) {
-                    window.updateGenerateButton(data.processing);
+                    window.updateGenerateButton(data.processing, data.generation_active);
                 }
             } catch (e) { /* ignore */ }
         }
@@ -408,16 +408,16 @@ const fileInput = document.getElementById('file-input');
         }
     }
 
-    window.updateGenerateButton = function (processing) {
+    window.updateGenerateButton = function (processing, generationActive) {
         if (generateBtn) {
+            const disabled = processing || generationActive;
+            generateBtn.disabled = disabled;
             if (processing) {
-                generateBtn.disabled = true;
                 generateBtn.title = 'A document is being processed. Please wait.';
+            } else if (generationActive) {
+                generateBtn.title = 'A question generation is already running. Please wait.';
             } else {
                 generateBtn.title = '';
-                if (selectedDocId) {
-                    generateBtn.disabled = false;
-                }
             }
         }
     };
@@ -428,6 +428,108 @@ const fileInput = document.getElementById('file-input');
 
     if (regenerateBtn) {
         regenerateBtn.addEventListener('click', generateQuestions);
+    }
+
+    let activePollTaskId = null;
+
+    resumeActiveTask();
+
+    async function resumeActiveTask() {
+        try {
+            const resp = await fetch('/api/tasks?status=active');
+            const tasks = await resp.json();
+            if (tasks.length === 0) return;
+
+            const task = tasks.reduce((a, b) =>
+                (a.created_at || 0) > (b.created_at || 0) ? a : b
+            );
+            loadingSection.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
+            questionsList.innerHTML = '';
+            document.getElementById('gen-progress').innerHTML = '';
+            if (window.updateGenerateButton) {
+                window.updateGenerateButton(false, true);
+            }
+            activePollTaskId = task.task_id;
+            await startPolling(task.task_id, null, task);
+        } catch (e) {
+            // no active task found
+        }
+    }
+
+    async function startPolling(taskId, config, initialTask) {
+        activePollTaskId = taskId;
+        let allQs = initialTask ? (initialTask.questions || []) : [];
+        const progressStatus = document.getElementById('progress-status');
+        let retryCount = 0;
+        const MAX_RETRIES = 2;
+
+        if (initialTask) {
+            allQs = initialTask.questions || [];
+            renderProgressTracker(initialTask);
+        }
+
+        while (true) {
+            if (activePollTaskId !== taskId) return;
+
+            await new Promise(r => setTimeout(r, 3000));
+
+            if (activePollTaskId !== taskId) return;
+
+            const statusResp = await fetch(`/api/generate/${taskId}`);
+            if (statusResp.status === 404) {
+                if (config && retryCount < MAX_RETRIES) {
+                    retryCount++;
+                    const retryResp = await fetch('/api/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(config),
+                    });
+                    if (retryResp.ok) {
+                        const retryData = await retryResp.json();
+                        taskId = retryData.task_id;
+                        activePollTaskId = taskId;
+                        continue;
+                    }
+                }
+                loadingSection.classList.add('hidden');
+                if (window.updateGenerateButton) window.updateGenerateButton(false, false);
+                return;
+            }
+            if (!statusResp.ok) {
+                loadingSection.classList.add('hidden');
+                if (window.updateGenerateButton) window.updateGenerateButton(false, false);
+                return;
+            }
+
+            const task = await statusResp.json();
+
+            if (activePollTaskId !== taskId) return;
+
+            if (task.status === 'error') {
+                loadingSection.classList.add('hidden');
+                if (window.updateGenerateButton) window.updateGenerateButton(false, false);
+                questionsList.innerHTML = '<div class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">Error: ' + (task.error || 'Generation failed') + '</div>';
+                resultsSection.classList.remove('hidden');
+                return;
+            }
+
+            if (task.status === 'running' || task.status === 'queued') {
+                if (progressStatus) progressStatus.textContent = task.message || 'Generating...';
+                allQs = task.questions || [];
+                renderProgressTracker(task);
+            }
+
+            if (task.status === 'done') {
+                lastQuestions = task.questions || allQs;
+                renderQuestions(lastQuestions);
+                loadingSection.classList.add('hidden');
+                resultsSection.classList.remove('hidden');
+                activePollTaskId = null;
+                if (window.updateGenerateButton) window.updateGenerateButton(false, false);
+                return;
+            }
+        }
     }
 
     async function generateQuestions() {
@@ -450,11 +552,14 @@ const fileInput = document.getElementById('file-input');
             count_per_type: parseInt(document.getElementById('count-per-type').value) || 2,
         };
 
+        activePollTaskId = null;
+        await new Promise(r => setTimeout(r, 50));
+
         resultsSection.classList.add('hidden');
         loadingSection.classList.remove('hidden');
         questionsList.innerHTML = '';
-
-        const progressStatus = document.getElementById('progress-status');
+        document.getElementById('gen-progress').innerHTML = '';
+        if (window.updateGenerateButton) window.updateGenerateButton(false, true);
 
         try {
             const resp = await fetch('/api/generate', {
@@ -470,54 +575,17 @@ const fileInput = document.getElementById('file-input');
                 throw new Error(msg);
             }
 
-            const { task_id } = await resp.json();
-
-            let allQs = [];
+            let { task_id } = await resp.json();
+            activePollTaskId = task_id;
 
             await new Promise(r => setTimeout(r, 1500));
 
-            while (true) {
-                await new Promise(r => setTimeout(r, 3000));
-
-                const statusResp = await fetch(`/api/generate/${task_id}`);
-                if (statusResp.status === 404) throw new Error('Server restarted — please try again');
-                if (!statusResp.ok) throw new Error('Status check failed');
-
-                const task = await statusResp.json();
-
-                if (task.status === 'error') {
-                    throw new Error(task.error || 'Generation failed');
-                }
-
-                if (task.status === 'running' || task.status === 'queued') {
-                    if (progressStatus) progressStatus.textContent = task.message || 'Working on it...';
-                    if (task.questions && task.questions.length > allQs.length) {
-                        const newQs = task.questions.slice(allQs.length);
-                        const grouped = {};
-                        newQs.forEach(q => {
-                            const t = q.question_type;
-                            if (!grouped[t]) grouped[t] = [];
-                            grouped[t].push(q);
-                        });
-                        Object.entries(grouped).forEach(([type, qs]) => {
-                            appendQuestionSection(type, qs);
-                        });
-                        allQs = task.questions;
-                    }
-                }
-
-                if (task.status === 'done') {
-                    lastQuestions = task.questions || allQs;
-                    renderQuestions(lastQuestions);
-                    loadingSection.classList.add('hidden');
-                    resultsSection.classList.remove('hidden');
-                    break;
-                }
-            }
+            await startPolling(task_id, config);
         } catch (err) {
             questionsList.innerHTML = '<div class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">Error: ' + err.message + '</div>';
             resultsSection.classList.remove('hidden');
             loadingSection.classList.add('hidden');
+            if (window.updateGenerateButton) window.updateGenerateButton(false, false);
         }
     }
 
@@ -631,6 +699,84 @@ const fileInput = document.getElementById('file-input');
 
         questionsList.innerHTML = html;
         lastQuestions = sorted;
+    }
+
+    function renderProgressTracker(task) {
+        const container = document.getElementById('gen-progress');
+        if (!container || !task.selected_types) return;
+
+        const comp = task.completed_types || [];
+        const current = task.current_type || '';
+        const nq = task.total_so_far || 0;
+        const total = task.total_target || 0;
+        const pct = total > 0 ? Math.round(nq / total * 100) : 0;
+        const allQs = task.questions || [];
+
+        let html = '';
+
+        html += `<div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+            <div class="h-2 rounded-full transition-all duration-500" style="width:${pct}%;background:#1e4d8c"></div>
+        </div>`;
+        html += `<p class="text-xs text-gray-500 text-center mb-4">${nq} of ${total} questions</p>`;
+
+        html += '<div class="space-y-1.5">';
+        task.selected_types.forEach(type => {
+            const done = comp.includes(type);
+            const active = !done && type === current;
+            const pending = !done && !active;
+            const typeQs = allQs.filter(q => q.question_type === type);
+
+            let dotClass = 'w-3 h-3 rounded-full inline-block flex-shrink-0';
+            let dotStyle = '';
+            if (done) {
+                dotClass += ' bg-green-600';
+            } else if (active) {
+                dotClass += ' bg-blue-600';
+                dotStyle = 'animation:pulse 1.5s ease-in-out infinite;';
+            } else {
+                dotClass += ' bg-gray-300';
+            }
+
+            html += `<div class="completed-type-wrapper border border-gray-200 rounded-lg overflow-hidden ${
+                done ? 'cursor-pointer' : ''
+            }">`;
+            html += `<div class="flex items-center gap-2.5 px-3 py-2 ${
+                active ? 'font-medium' : ''
+            } ${done ? 'completed-type-header hover:bg-gray-50 transition-colors select-none' : ''}" data-type="${type}">`;
+            html += `<span class="${dotClass}" style="${dotStyle}"></span>`;
+            html += `<span class="text-sm ${done ? 'text-gray-600' : active ? 'text-blue-700' : 'text-gray-400'}">${type}</span>`;
+            if (done) {
+                html += `<span class="text-xs text-gray-400 ml-1">(${typeQs.length})</span>`;
+                html += `<span class="text-xs text-green-600 ml-auto">Done</span>`;
+                html += `<svg class="chevron w-4 h-4 text-gray-400 transition-transform ml-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>`;
+            } else if (active) {
+                html += `<span class="text-xs text-blue-500 ml-auto">Generating...</span>`;
+            }
+            html += `</div>`;
+            if (done && typeQs.length) {
+                html += `<div class="completed-type-questions hidden border-t border-gray-200 p-3 space-y-2">`;
+                typeQs.forEach((q, i) => {
+                    html += buildQuestionCard(q, i + 1);
+                });
+                html += `</div>`;
+            }
+            html += `</div>`;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+
+        container.querySelectorAll('.completed-type-header').forEach(header => {
+            header.addEventListener('click', function () {
+                const wrapper = this.closest('.completed-type-wrapper');
+                const body = wrapper.querySelector('.completed-type-questions');
+                const chevron = this.querySelector('.chevron');
+                if (body) {
+                    body.classList.toggle('hidden');
+                    if (chevron) chevron.classList.toggle('rotate-180');
+                }
+            });
+        });
     }
 
     const sourceToggle = document.getElementById('show-source');

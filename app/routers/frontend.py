@@ -32,3 +32,8 @@ async def generate_page(request: Request):
 @router.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request):
     return templates.TemplateResponse(request, "chat.html", {"request": request})
+
+
+@router.get("/tasks", response_class=HTMLResponse)
+async def tasks_page(request: Request):
+    return templates.TemplateResponse(request, "tasks.html", {"request": request})

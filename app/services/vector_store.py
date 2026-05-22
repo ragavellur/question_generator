@@ -1,5 +1,8 @@
 import json
 
+import httpx
+
+from app.config import OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL
 from app.models.schemas import Chunk, Chapter
 from app.models.state import get_chunks_collection, get_docs_collection
 
@@ -89,6 +92,15 @@ def _build_where(filters: dict | None) -> dict | None:
     return {"$and": clauses}
 
 
+def _embed_query(text: str) -> list[float]:
+    url = f"{OLLAMA_BASE_URL}/api/embed"
+    with httpx.Client(timeout=30) as client:
+        resp = client.post(url, json={"model": OLLAMA_EMBED_MODEL, "input": [f"query: {text}"]})
+        resp.raise_for_status()
+        data = resp.json()
+        return data["embeddings"][0]
+
+
 def query_chunks(
     query_text: str,
     n_results: int = 10,
@@ -96,8 +108,10 @@ def query_chunks(
 ) -> list[dict]:
     collection = get_chunks_collection()
 
+    query_emb = _embed_query(query_text)
+
     results = collection.query(
-        query_texts=[query_text],
+        query_embeddings=[query_emb],
         n_results=n_results,
         where=_build_where(filters),
     )
