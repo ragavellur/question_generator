@@ -1,12 +1,24 @@
 import json
+import re
+import logging
 import httpx
 
-from app.config import OLLAMA_BASE_URL, OLLAMA_MODEL, N_CTX, N_THREADS
+from app.config import OLLAMA_BASE_URL, OLLAMA_MODEL, N_CTX, N_THREADS, LLM_TIMEOUT
 
-OLLAMA_TIMEOUT = 600.0
+logger = logging.getLogger(__name__)
 
 
-async def chat(prompt: str, system: str | None = None, model: str | None = None, temperature: float = 0.1, num_predict: int = 8192) -> str:
+def _sanitize_json_text(text: str) -> str:
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1] if "\n" in text else text[3:]
+        text = text.rsplit("```", 1)[0] if "```" in text else text
+        text = text.strip()
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+    return text
+
+
+async def chat(prompt: str, system: str | None = None, model: str | None = None, temperature: float = 0.1, num_predict: int = 8192, label: str = "") -> str:
     url = f"{OLLAMA_BASE_URL}/api/chat"
     messages = []
     if system:
@@ -26,15 +38,20 @@ async def chat(prompt: str, system: str | None = None, model: str | None = None,
         },
     }
 
-    async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=LLM_TIMEOUT) as client:
+        label_str = f" [{label}]" if label else ""
+        logger.info(f"LLM call{label_str}: sending request to {OLLAMA_BASE_URL}/api/chat")
         resp = await client.post(url, json=body)
+        if resp.status_code != 200:
+            body_text = resp.text[:1000]
+            logger.error(f"LLM call{label_str} FAILED: HTTP {resp.status_code}, body: {body_text}")
         resp.raise_for_status()
         data = resp.json()
         return data["message"]["content"]
 
 
 def _extract_json(text: str):
-    text = text.strip()
+    text = _sanitize_json_text(text)
     first = text.find("{")
     bracket = text.find("[")
     if bracket != -1 and (first == -1 or bracket < first):
@@ -69,14 +86,11 @@ def _extract_json(text: str):
 
 async def chat_json(prompt: str, system: str | None = None, model: str | None = None, temperature: float = 0.1, num_predict: int = 8192) -> dict | list:
     content = await chat(prompt, system=system, model=model, temperature=temperature, num_predict=num_predict)
-    content = content.strip()
-    if content.startswith("```"):
-        content = content.split("\n", 1)[1]
-        content = content.rsplit("```", 1)[0]
+    content = _sanitize_json_text(content)
     try:
-        return json.loads(content.strip())
+        return json.loads(content)
     except json.JSONDecodeError:
-        return _extract_json(content.strip())
+        return _extract_json(content)
 
 
 async def chat_with_messages(messages: list[dict], model: str | None = None, temperature: float = 0.0, num_predict: int = 4096) -> str:
@@ -93,7 +107,7 @@ async def chat_with_messages(messages: list[dict], model: str | None = None, tem
             "num_thread": N_THREADS,
         },
     }
-    async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=LLM_TIMEOUT) as client:
         resp = await client.post(url, json=body)
         resp.raise_for_status()
         data = resp.json()

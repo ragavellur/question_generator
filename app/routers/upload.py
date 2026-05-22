@@ -36,6 +36,7 @@ async def get_upload_status(doc_id: str):
 
 @router.get("/processing/status")
 async def get_processing_status_global():
+    from app.services.task_manager import task_manager as _tm
     active = get_active()
     qlen = queue_length()
     return {
@@ -45,4 +46,5 @@ async def get_processing_status_global():
         "active_status": active["status"] if active else None,
         "active_message": active["message"] if active else None,
         "queue_length": qlen,
+        "generation_active": _tm.has_active_task(),
     }

@@ -34,6 +34,31 @@ def init_db():
             completed_at TEXT
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id               TEXT PRIMARY KEY,
+            status           TEXT NOT NULL DEFAULT 'queued',
+            message          TEXT DEFAULT '',
+            questions        TEXT DEFAULT '[]',
+            total_so_far     INTEGER DEFAULT 0,
+            error            TEXT,
+            selected_types   TEXT DEFAULT '[]',
+            completed_types  TEXT DEFAULT '[]',
+            current_type     TEXT,
+            total_target     INTEGER DEFAULT 0,
+            created_at       REAL NOT NULL,
+            updated_at       TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS generation_log (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id    TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            details    TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
     conn.commit()
 
 

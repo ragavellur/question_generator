@@ -1,10 +1,14 @@
 import asyncio
+import logging
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 from app.models.schemas import QuestionConfig
-from app.services.question_generator import generate_questions_stream
+from app.services.question_generator import generate_questions_stream, _type_label
 from app.services.task_manager import task_manager
+from app.services.vector_store import list_documents
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
@@ -17,47 +21,99 @@ async def generate(config: QuestionConfig):
         raise HTTPException(status_code=400, detail="At least one question type must be selected")
 
     task_id = task_manager.create_task()
+    type_labels = [_type_label(qt) for qt in config.question_types]
+    total_target = len(config.question_types) * config.count_per_type
+
+    all_docs = list_documents()
+    doc_names = {}
+    for d in all_docs:
+        doc_names[d["id"]] = d["name"]
+
+    task_config = {
+        "doc_ids": config.doc_ids,
+        "doc_names": [doc_names.get(did, did[:12] + "...") for did in config.doc_ids],
+        "chapter_numbers": config.chapter_numbers,
+        "section_numbers": config.section_numbers,
+        "all_chapters": getattr(config, "all_chapters", False),
+        "question_types": config.question_types,
+        "type_labels": type_labels,
+        "domains": config.domains,
+        "difficulty": config.difficulty,
+        "count_per_type": config.count_per_type,
+    }
+
+    task_manager.update_task(task_id, selected_types=type_labels, completed_types=[], current_type=None, total_target=total_target, config=task_config)
 
     async def _run():
         task_manager.update_task(task_id, status="running", message="Starting generation...")
         try:
             async for event in generate_questions_stream(config):
+                if task_manager.get_task(task_id) is None:
+                    logger.warning("Aborting _run() for task_id=%s — task deleted from DB", task_id)
+                    break
                 if event["event"] == "progress":
+                    qs = event.get("questions", [])
+                    logger.info(f"PROGRESS event: type={event.get('type')}, count={len(qs)}, total_so_far={event.get('total_so_far')}, task_id={task_id}")
                     task = task_manager.get_task(task_id)
                     existing = task["questions"] if task else []
-                    existing.extend(event.get("questions", []))
+                    existing.extend(qs)
+                    comp = task.get("completed_types", []) if task else []
+                    comp = list(dict.fromkeys(comp + [event.get("type")]))
                     task_manager.update_task(
                         task_id,
                         questions=existing,
+                        completed_types=comp,
                         total_so_far=event.get("total_so_far", 0),
                         message=f"Generated {event.get('total_so_far', 0)} questions so far",
                     )
                 elif event["event"] == "status":
-                    task_manager.update_task(task_id, message=event.get("message", ""))
+                    update = {}
+                    if not event.get("timeout"):
+                        update["message"] = event.get("message", "")
+                    if "current_type" in event:
+                        update["current_type"] = event["current_type"]
+                    if update:
+                        task_manager.update_task(task_id, **update)
                 elif event["event"] == "warning":
+                    msg = event.get("message", "")
+                    logger.warning("WARNING event: task_id=%s message=%s", task_id, msg)
                     ts = task_manager.get_task(task_id)
                     prev = ts.get("message", "") if ts else ""
-                    task_manager.update_task(task_id, message=f"{prev} | {event.get('message', '')}")
+                    task_manager.update_task(task_id, message=f"{prev} | {msg}")
                 elif event["event"] == "done":
+                    logger.info("DONE event: task_id=%s total=%d questions=%d", task_id, event.get("total", 0), len(event.get("questions", [])))
                     task_manager.update_task(
                         task_id,
                         status="done",
                         questions=event.get("questions", []),
+                        completed_types=list(type_labels),
                         total_so_far=event.get("total", 0),
                         message=f"Completed — {event.get('total', 0)} questions generated",
                     )
                 elif event["event"] == "error":
+                    logger.error("ERROR event: task_id=%s message=%s", task_id, event.get("message", ""))
                     task_manager.update_task(
                         task_id,
                         status="error",
                         error=event.get("message", "Unknown error"),
                     )
         except Exception as e:
+            logger.exception("UNHANDLED EXCEPTION in _run() for task_id=%s: %s", task_id, e)
             task_manager.update_task(task_id, status="error", error=str(e))
 
     asyncio.create_task(_run())
 
     return {"task_id": task_id, "status": "queued"}
+
+
+@router.get("/tasks")
+async def list_tasks(status: str | None = None):
+    all_tasks = task_manager.list_tasks()
+    if status == "active":
+        return [t for t in all_tasks if t.get("status") in ("queued", "running")]
+    elif status:
+        return [t for t in all_tasks if t.get("status") == status]
+    return all_tasks
 
 
 @router.get("/generate/{task_id}")
@@ -66,6 +122,26 @@ async def get_generation_status(task_id: str):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
+
+
+class CleanupRequest(BaseModel):
+    max_age: int = 3600
+
+
+@router.post("/tasks/cleanup")
+async def cleanup_tasks(req: CleanupRequest):
+    min_age = 300  # don't delete tasks younger than 5 minutes
+    age = max(req.max_age, min_age)
+    count = task_manager.cleanup_old(max_age=age)
+    return {"deleted": count}
+
+
+@router.delete("/tasks/{task_id}")
+async def delete_task(task_id: str):
+    ok = task_manager.delete_task(task_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"deleted": True}
 
 
 class PDFRequest(BaseModel):

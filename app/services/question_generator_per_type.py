@@ -76,6 +76,7 @@ IMPORTANT RULES:
 - The output MUST contain EXACTLY {total_needed} questions: {config.count_per_type} MCQ, {config.count_per_type} True/False, {config.count_per_type} FIB, {config.count_per_type} Very Short, {config.count_per_type} Short Answer, {config.count_per_type} Long Answer.
 - Every question MUST be answerable from the provided context alone.
 - Questions must be self-contained. NEVER use vague references like "the text", "the passage", "the document", "the chapter", "above", "mentioned", "discussed", "this topic". Explicitly name the concept.
+- Do NOT reference equation numbers (e.g. "Equation 2.51"), chapter numbers (e.g. "Chapter 14"), section numbers, figure/table numbers, or any document-structure elements in the question text. Name the concept directly — the question must be fully understandable without seeing the source document.
 - For FIB: blank is ______ (6 underscores), sentence 10-15 words.
 - For MCQ: exactly 4 options (a-d), all plausible, one correct.
 - For True/False: answer must be exactly "True" or "False".

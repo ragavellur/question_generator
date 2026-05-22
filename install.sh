@@ -54,7 +54,6 @@ if [ "$INSTALL_DIRECT" = false ]; then
 fi
 
 # ---- Python deps ----
-$PIP install --ignore-installed typing-extensions -q 2>/dev/null || true
 $PIP install --no-cache-dir -r requirements.txt \
     ${INSTALL_DIRECT:+--break-system-packages}
 echo "✓ Python dependencies installed"
@@ -104,13 +103,30 @@ ollama pull qwen2.5:7b-instruct
 echo "✓ LLM model pulled"
 
 echo ""
-echo "Pulling embedding model (jeffh/intfloat-multilingual-e5-large:q8_0)..."
-ollama pull jeffh/intfloat-multilingual-e5-large:q8_0
+echo "Pulling embedding model (nomic-embed-text)..."
+ollama pull nomic-embed-text
 echo "✓ Embedding model pulled"
 
+echo ""
+echo "Pulling RAG chat model (llama3.2:3b)..."
+ollama pull llama3.2:3b
+echo "✓ RAG chat model pulled"
+
+echo ""
+echo "Caching cross-encoder reranker model..."
+python3 -c "from sentence_transformers import CrossEncoder; CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')" 2>/dev/null
+echo "✓ Reranker model cached"
+
+# ---- Groq ----
+echo ""
+echo "Optional: For Groq cloud LLM support, set your API key:"
+echo "  export GROQ_API_KEY=\"gsk_your_key_here\""
+echo ""
+
 # ---- Directories ----
-mkdir -p chroma_db uploaded_docs
+DATA_DIR="${DATA_DIR:-$APP_DIR/data}"
+mkdir -p "$DATA_DIR/chroma_db" "$DATA_DIR/uploaded_docs"
 
 echo ""
 echo "=== Installation complete ==="
-echo "Run: ./run.sh"
+echo "Run: DATA_DIR=\"$DATA_DIR\" ./run.sh"
