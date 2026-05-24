@@ -125,26 +125,43 @@ fi
 echo ""
 echo "[4/6] Exporting Ollama models..."
 
+# If ollama not in PATH but we have the downloaded binary, extract it temporarily
+OLLAMA_TEMP=""
+if ! command -v ollama >/dev/null 2>&1; then
+    if [ -f "dependencies/ollama/binary/ollama-linux-amd64.tgz" ]; then
+        echo "  Extracting Ollama binary temporarily for model download..."
+        OLLAMA_TEMP="$(mktemp -d)"
+        tar -xzf dependencies/ollama/binary/ollama-linux-amd64.tgz -C "$OLLAMA_TEMP"
+        export PATH="$OLLAMA_TEMP:$PATH"
+        echo "  ✓ Ollama binary ready at $OLLAMA_TEMP/ollama"
+    else
+        echo "  ✗ Ollama binary not found in dependencies/ollama/binary/"
+        echo "    Cannot download models without Ollama. Re-run [3/6] first."
+    fi
+fi
+
+# If we have ollama available (system or temp), pull models
 if command -v ollama >/dev/null 2>&1; then
-    # Check if ollama server is running
+    # Check if ollama server is running; start if needed
+    OLLAMA_PID=""
     if ! curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
         echo "  Starting Ollama server for model export..."
         ollama serve > /tmp/ollama-download.log 2>&1 &
         OLLAMA_PID=$!
         sleep 5
+        # Verify it started
+        if ! curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+            echo "  ✗ Failed to start Ollama server. Check /tmp/ollama-download.log"
+        fi
     fi
 
     for model in qwen2.5:7b-instruct nomic-embed-text llama3.2:3b; do
-        if ollama list 2>/dev/null | grep -q "$model"; then
-            echo "  ✓ $model already pulled"
-        else
-            echo "  Pulling $model (this may take a while)..."
-            ollama pull "$model"
-            echo "  ✓ $model pulled"
-        fi
+        echo "  Pulling $model (this may take a while)..."
+        ollama pull "$model"
+        echo "  ✓ $model pulled"
     done
 
-    # Copy model files
+    # Copy model files to dependencies
     OLLAMA_MODELS_DIR="${OLLAMA_MODELS:-$HOME/.ollama/models}"
     if [ -d "$OLLAMA_MODELS_DIR" ]; then
         mkdir -p dependencies/ollama/models
@@ -154,14 +171,17 @@ if command -v ollama >/dev/null 2>&1; then
     fi
 
     # Stop temp server if we started it
-    if [ -n "${OLLAMA_PID:-}" ]; then
+    if [ -n "$OLLAMA_PID" ]; then
         kill "$OLLAMA_PID" 2>/dev/null || true
+        # Wait for shutdown
+        sleep 2
     fi
-else
-    echo "  ⚠ Ollama not installed. Cannot export models."
-    echo "    Install Ollama first: curl -fsSL https://ollama.com/install.sh | sh"
-    echo "    Then pull models: ollama pull qwen2.5:7b-instruct nomic-embed-text llama3.2:3b"
-    echo "    Then copy ~/.ollama/models/* to dependencies/ollama/models/"
+fi
+
+# Clean up temporary Ollama binary
+if [ -n "$OLLAMA_TEMP" ]; then
+    rm -rf "$OLLAMA_TEMP"
+    echo "  Temporary Ollama binary cleaned up"
 fi
 
 # =====================================================================
