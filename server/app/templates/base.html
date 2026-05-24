@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Question Generator</title>
+    <link rel="icon" type="image/png" href="/static/images/question_generator.png">
+    <script src="/static/js/tailwind.min.js" onerror="
+        var s=document.createElement('script');
+        s.src='https://cdn.tailwindcss.com';
+        document.head.appendChild(s);
+    "></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="min-h-screen" style="background:#eef2f7">
+    <nav style="background: linear-gradient(135deg, #0a1f3f, #122d5c);" class="shadow-lg border-b border-blue-800">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 p-1">
+                        <img src="/static/images/question_generator.svg" alt="Question Generator" class="w-full h-full mt-[4px]">
+                    </div>
+                    <a href="/" class="text-xl font-bold tracking-tight" style="color:#f0f4ff">Question Generator</a>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <a href="/upload" class="nav-link text-sm font-medium px-2 py-1">Upload</a>
+                    <a href="/documents" class="nav-link text-sm font-medium px-2 py-1">Documents</a>
+                    <a href="/generate" class="nav-link text-sm font-medium px-2 py-1">Generate</a>
+                    <a href="/tasks" class="nav-link text-sm font-medium px-2 py-1">Tasks</a>
+                    <a href="/chat" class="nav-link text-sm font-medium px-2 py-1">Chat</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="iaf-divider"></div>
+
+    <div id="global-processing-banner" class="hidden bg-amber-50 border-b border-amber-200 text-amber-800 text-sm px-4 py-2">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <span class="inline-block w-2 h-2 rounded-full bg-amber-400 processing-pulse"></span>
+                <span id="global-status-text">Processing document...</span>
+            </div>
+            <span id="global-queue-text" class="text-amber-600 text-xs"></span>
+        </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="/static/js/main.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

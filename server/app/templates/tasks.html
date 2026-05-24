@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold" style="color:#0a1f3f">Task History</h1>
+        <div class="flex items-center space-x-3">
+            <select id="cleanup-age" class="border rounded-lg px-3 py-2 text-sm" style="border-color:#d1d5db; background:#ffffff; color:#1e293b">
+                <option value="3600">Older than 1 hour</option>
+                <option value="21600">Older than 6 hours</option>
+                <option value="86400">Older than 24 hours</option>
+                <option value="0">Anytime</option>
+            </select>
+            <button id="cleanup-btn" class="btn-iaf btn-iaf-secondary text-sm" onclick="cleanupTasks()">Delete Finished Tasks</button>
+        </div>
+    </div>
+
+    <div id="tasks-list" class="space-y-3">
+        <div class="text-center py-12" style="color:#64748b">
+            <div class="text-4xl mb-3">⏳</div>
+            <p>Loading tasks...</p>
+        </div>
+    </div>
+
+    <div id="error-section" class="hidden mt-4 bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm"></div>
+</div>
+
+<div id="questions-modal" class="fixed inset-0 z-50 hidden" style="background:rgba(0,0,0,0.5); backdrop-filter:blur(2px)">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col" style="animation:modalIn 0.2s ease-out">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
+                <div>
+                    <h2 id="modal-title" class="text-lg font-bold" style="color:#0a1f3f">Questions</h2>
+                    <p id="modal-subtitle" class="text-xs mt-0.5" style="color:#94a3b8"></p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button id="modal-download-json" class="btn-iaf btn-iaf-secondary text-xs px-3 py-1.5 hidden">Download JSON</button>
+                    <button id="modal-download-pdf" class="btn-iaf btn-iaf-secondary text-xs px-3 py-1.5 hidden">Download PDF</button>
+                    <button onclick="closeQuestionsModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none transition-colors ml-2">&times;</button>
+                </div>
+            </div>
+            <div class="px-6 pt-3 pb-1 shrink-0">
+                <label class="iaf-toggle">
+                    <input type="checkbox" id="modal-show-source" onchange="renderModalQuestions()">
+                    <span class="toggle-track"></span>
+                    <span class="toggle-label">Show chapter source</span>
+                </label>
+            </div>
+            <div id="modal-config-summary" class="shrink-0 px-6 pb-0 hidden">
+                <div class="bg-gray-50 rounded-lg p-3 text-xs space-y-1.5 border border-gray-100" style="color:#475569"></div>
+            </div>
+            <div id="modal-body" class="flex-1 overflow-y-auto px-6 py-3 space-y-3">
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes modalIn {
+    from { opacity:0; transform:scale(0.95) translateY(10px); }
+    to   { opacity:1; transform:scale(1) translateY(0); }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/tasks.js"></script>
+{% endblock %}

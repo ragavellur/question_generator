@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center mb-12">
+    <div class="flex items-center justify-center space-x-4 mb-4">
+        <div class="flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 p-2">
+            <img src="/static/images/question_generator.svg" alt="Question Generator" class="w-full h-full mt-[8px]">
+        </div>
+        <h1 class="text-4xl font-bold" style="color:#0a1f3f">Question Generator</h1>
+    </div>
+    <p class="text-lg" style="color:#475569">Upload PDF documents and generate educational questions using AI</p>
+</div>
+
+<div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+    <a href="/upload" class="block p-8 rounded-xl border-2 transition-all group" style="background:#ffffff; border-color:transparent; box-shadow: 0 1px 3px rgba(10,31,63,0.08)" onmouseover="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 4px 16px rgba(30,77,140,0.12)'" onmouseout="this.style.borderColor='transparent'; this.style.boxShadow='0 1px 3px rgba(10,31,63,0.08)'">
+        <div class="text-5xl mb-4">📄</div>
+        <h2 class="text-2xl font-semibold mb-2" style="color:#0a1f3f">Upload Documents</h2>
+        <p style="color:#64748b">Upload PDF documents to build your knowledge base. The system will extract, clean, and structure the content automatically.</p>
+        <div class="mt-4 font-medium" style="color:#1e4d8c">Get started →</div>
+    </a>
+
+    <a href="/generate" class="block p-8 rounded-xl border-2 transition-all group" style="background:#ffffff; border-color:transparent; box-shadow: 0 1px 3px rgba(10,31,63,0.08)" onmouseover="this.style.borderColor='#1e4d8c'; this.style.boxShadow='0 4px 16px rgba(30,77,140,0.12)'" onmouseout="this.style.borderColor='transparent'; this.style.boxShadow='0 1px 3px rgba(10,31,63,0.08)'">
+        <div class="text-5xl mb-4">🎯</div>
+        <h2 class="text-2xl font-semibold mb-2" style="color:#0a1f3f">Question Bank</h2>
+        <p style="color:#64748b">Browse your document library, select topics, and generate questions with customizable types and difficulty levels.</p>
+        <div class="mt-4 font-medium" style="color:#1e4d8c">Start generating →</div>
+    </a>
+</div>
+
+<div class="mt-16 max-w-4xl mx-auto">
+    <h3 class="text-xl font-semibold mb-4" style="color:#0a1f3f">How it works</h3>
+    <div class="grid md:grid-cols-4 gap-4">
+        <div class="p-4 rounded-lg" style="background:#ffffff; box-shadow: 0 1px 3px rgba(10,31,63,0.08)">
+            <div class="text-2xl font-bold mb-2" style="color:#1e4d8c">1</div>
+            <h4 class="font-medium" style="color:#0a1f3f">Upload PDF</h4>
+            <p class="text-sm" style="color:#64748b">Upload any textbook or educational PDF</p>
+        </div>
+        <div class="p-4 rounded-lg" style="background:#ffffff; box-shadow: 0 1px 3px rgba(10,31,63,0.08)">
+            <div class="text-2xl font-bold mb-2" style="color:#1e4d8c">2</div>
+            <h4 class="font-medium" style="color:#0a1f3f">AI Processing</h4>
+            <p class="text-sm" style="color:#64748b">LLM analyzes structure, cleans noise, extracts content</p>
+        </div>
+        <div class="p-4 rounded-lg" style="background:#ffffff; box-shadow: 0 1px 3px rgba(10,31,63,0.08)">
+            <div class="text-2xl font-bold mb-2" style="color:#1e4d8c">3</div>
+            <h4 class="font-medium" style="color:#0a1f3f">Smart Storage</h4>
+            <p class="text-sm" style="color:#64748b">Content is chunked, embedded, and stored in vector DB</p>
+        </div>
+        <div class="p-4 rounded-lg" style="background:#ffffff; box-shadow: 0 1px 3px rgba(10,31,63,0.08)">
+            <div class="text-2xl font-bold mb-2" style="color:#1e4d8c">4</div>
+            <h4 class="font-medium" style="color:#0a1f3f">Generate</h4>
+            <p class="text-sm" style="color:#64748b">Select topics and generate custom questions</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
