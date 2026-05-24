@@ -113,13 +113,15 @@ echo ""
 # =====================================================================
 echo "[3/6] Downloading Ollama binary..."
 
-OLLAMA_URL="https://github.com/ollama/ollama/releases/latest/download/ollama-linux-amd64.tgz"
-if wget --timeout=60 "$OLLAMA_URL" -O dependencies/ollama/binary/ollama-linux-amd64.tgz; then
-    echo "  → ollama-linux-amd64.tgz ($(du -h dependencies/ollama/binary/ollama-linux-amd64.tgz | cut -f1))"
+OLLAMA_ASSET="ollama-linux-amd64.tar.zst"
+OLLAMA_URL="https://github.com/ollama/ollama/releases/latest/download/$OLLAMA_ASSET"
+OLLAMA_BINARY="dependencies/ollama/binary/$OLLAMA_ASSET"
+if wget --timeout=120 "$OLLAMA_URL" -O "$OLLAMA_BINARY"; then
+    echo "  → $OLLAMA_ASSET ($(du -h "$OLLAMA_BINARY" | cut -f1))"
 else
     echo "  ✗ Failed to download Ollama binary."
     echo "    Download manually from: $OLLAMA_URL"
-    echo "    Save to: dependencies/ollama/binary/ollama-linux-amd64.tgz"
+    echo "    Save to: $OLLAMA_BINARY"
 fi
 
 echo ""
@@ -132,12 +134,30 @@ echo "[4/6] Downloading Ollama models..."
 # If ollama not in PATH, extract downloaded binary temporarily
 OLLAMA_TEMP=""
 if ! command -v ollama; then
-    if [ -f "dependencies/ollama/binary/ollama-linux-amd64.tgz" ]; then
+    if [ -f "dependencies/ollama/binary/ollama-linux-amd64.tar.zst" ]; then
         echo "  Extracting Ollama binary temporarily..."
         OLLAMA_TEMP="$(mktemp -d)"
-        tar -xzf dependencies/ollama/binary/ollama-linux-amd64.tgz -C "$OLLAMA_TEMP"
+        # Extract .tar.zst (prefer zstd, fall back to gzip for old tgz format)
+        if command -v zstd; then
+            zstd -dc "dependencies/ollama/binary/ollama-linux-amd64.tar.zst" | tar xf - -C "$OLLAMA_TEMP"
+        elif command -v tar && tar --help 2>&1 | grep -q zstd; then
+            tar -I zstd -xf "dependencies/ollama/binary/ollama-linux-amd64.tar.zst" -C "$OLLAMA_TEMP"
+        else
+            # Fallback: install zstd via pip from local or download
+            echo "  zstd not found, installing..."
+            if command -v pip; then
+                pip install zstandard -q
+                zstd -dc "dependencies/ollama/binary/ollama-linux-amd64.tar.zst" | tar xf - -C "$OLLAMA_TEMP"
+            else
+                echo "  ✗ zstd not available. Install it: sudo apt install zstd"
+            fi
+        fi
         export PATH="$OLLAMA_TEMP:$PATH"
-        echo "  ✓ Ollama ready at $OLLAMA_TEMP/ollama"
+        if command -v ollama; then
+            echo "  ✓ Ollama ready at $(which ollama)"
+        else
+            echo "  ✗ Failed to extract Ollama binary."
+        fi
     else
         echo "  ✗ Ollama binary not found. Run [3/6] first or install ollama."
         echo "    Then manually: ollama pull qwen2.5:7b-instruct nomic-embed-text llama3.2:3b"
@@ -198,18 +218,38 @@ echo "[5/6] Downloading cross-encoder reranker model..."
 export TRANSFORMERS_CACHE="$ROOT_DIR/dependencies/models"
 export HF_HOME="$ROOT_DIR/dependencies/models"
 
-if python3 -c "
+# Install sentence-transformers from local wheels temporarily to trigger model download
+CE_DEPS_DIR="$(mktemp -d)"
+echo "  Installing sentence-transformers from local wheels..."
+if python3 -m pip install --target="$CE_DEPS_DIR" --no-index \
+    --find-links="$ROOT_DIR/dependencies/python/" sentence-transformers; then
+    echo "  Running cross-encoder download..."
+    if PYTHONPATH="$CE_DEPS_DIR:$PYTHONPATH" python3 -c "
 from sentence_transformers import CrossEncoder
-print('  Downloading cross-encoder/ms-marco-MiniLM-L-6-v2...')
 CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 print('  ✓ Cross-encoder model downloaded')
 "; then
-    CE_SIZE=$(du -sh "$ROOT_DIR/dependencies/models" | cut -f1 || echo "0")
-    echo "  Size: $CE_SIZE"
+        CE_SIZE=$(du -sh "$ROOT_DIR/dependencies/models" | cut -f1 || echo "0")
+        echo "  Size: $CE_SIZE"
+    else
+        echo "  ✗ Failed to download cross-encoder model."
+        echo "    It will be downloaded on first use (requires internet at runtime)."
+    fi
 else
-    echo "  ✗ Failed to download cross-encoder model."
-    echo "    It will be downloaded on first use (requires internet at runtime)."
+    echo "  ⚠ Could not install sentence-transformers from local wheels."
+    echo "  Retrying with online pip..."
+    if python3 -c "
+from sentence_transformers import CrossEncoder
+CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+"; then
+        CE_SIZE=$(du -sh "$ROOT_DIR/dependencies/models" | cut -f1 || echo "0")
+        echo "  Size: $CE_SIZE"
+    else
+        echo "  ✗ Failed to download cross-encoder model."
+        echo "    It will be downloaded on first use (requires internet at runtime)."
+    fi
 fi
+rm -rf "$CE_DEPS_DIR"
 
 echo ""
 

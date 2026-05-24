@@ -264,9 +264,17 @@ elif [ "$INSTALL_MODE" = "online" ]; then
     echo "  Installing Ollama..."
     curl -fsSL https://ollama.com/install.sh | sh
     echo "  ✓ Ollama installed"
-elif [ -f "$DEPS_DIR/ollama/binary/ollama-linux-amd64.tgz" ]; then
+elif [ -f "$DEPS_DIR/ollama/binary/ollama-linux-amd64.tar.zst" ]; then
     echo "  Installing Ollama from local binary..."
-    tar -xzf "$DEPS_DIR/ollama/binary/ollama-linux-amd64.tgz" -C /usr/local/
+    if command -v zstd; then
+        zstd -dc "$DEPS_DIR/ollama/binary/ollama-linux-amd64.tar.zst" | tar xf - -C /usr/local/
+    elif tar --help 2>&1 | grep -q zstd; then
+        tar -I zstd -xf "$DEPS_DIR/ollama/binary/ollama-linux-amd64.tar.zst" -C /usr/local/
+    else
+        echo "  Installing zstd..."
+        apt-get install -y zstd
+        zstd -dc "$DEPS_DIR/ollama/binary/ollama-linux-amd64.tar.zst" | tar xf - -C /usr/local/
+    fi
     echo "  ✓ Ollama installed from local binary"
 else
     echo "  ⚠ Ollama binary not found. Skipping."
