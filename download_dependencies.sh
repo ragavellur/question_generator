@@ -52,26 +52,27 @@ if ! python3 -m pip --version >/dev/null 2>&1; then
     }
 fi
 
-# Download all wheels + dependencies
+# Download all wheels + dependencies (native platform — checked above)
 python3 -m pip download \
-    --only-binary :all: \
-    --platform manylinux2014_x86_64 \
-    --python-version 312 \
     -r server/requirements.txt \
     -d dependencies/python/ \
     2>&1 | tail -5
 
-# Some packages may need source builds (no binary wheel). Fall back.
+# Fall back to allowing source builds if some packages have no binary wheel
 PY_WHEELS=$(ls dependencies/python/*.whl 2>/dev/null | wc -l)
-echo "  → $PY_WHEELS wheel files downloaded"
+if [ "$PY_WHEELS" -lt 5 ]; then
+    echo "  Too few binary wheels, retrying with source builds allowed..."
+    python3 -m pip download \
+        --no-binary :all: \
+        -r server/requirements.txt \
+        -d dependencies/python/ \
+        2>&1 | tail -5
+    PY_WHEELS=$(ls dependencies/python/*.whl 2>/dev/null | wc -l)
+fi
+echo "  → $PY_WHEELS wheel/source files downloaded"
 
 # Download pip itself and get-pip.py for offline bootstrapping
-python3 -m pip download \
-    --only-binary :all: \
-    --platform manylinux2014_x86_64 \
-    --python-version 312 \
-    pip \
-    -d dependencies/python/ 2>/dev/null || true
+python3 -m pip download pip -d dependencies/python/ 2>/dev/null || true
 wget -q https://bootstrap.pypa.io/get-pip.py -O dependencies/python/get-pip.py 2>/dev/null || true
 
 echo "  → $(ls dependencies/python/*.whl 2>/dev/null | wc -l) wheels + get-pip.py"
