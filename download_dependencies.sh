@@ -7,9 +7,6 @@
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
 
-# We do NOT use set -e — we want every section to attempt its work
-# even if a previous step had issues. Errors are handled explicitly.
-
 echo "============================================"
 echo "  Download All Dependencies for"
 echo "  Offline Installation"
@@ -48,10 +45,10 @@ if [ ! -f "server/requirements.txt" ]; then
 fi
 
 # Ensure pip is available
-if ! python3 -m pip --version >/dev/null 2>&1; then
+if ! python3 -m pip --version; then
     echo "  Installing pip..."
-    if ! python3 -m ensurepip --upgrade 2>/dev/null; then
-        wget -q https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py && \
+    if ! python3 -m ensurepip --upgrade; then
+        wget https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py && \
         python3 /tmp/get-pip.py --user && \
         export PATH="$HOME/.local/bin:$PATH"
     fi
@@ -59,14 +56,14 @@ fi
 
 echo "  Downloading wheels (this may take a while)..."
 if python3 -m pip download -r server/requirements.txt -d dependencies/python/; then
-    PY_WHEELS=$(ls dependencies/python/*.whl 2>/dev/null | wc -l)
+    PY_WHEELS=$(ls dependencies/python/*.whl | wc -l)
     echo "  → $PY_WHEELS wheel files downloaded"
     echo "  Size: $(du -sh dependencies/python/ | cut -f1)"
 
     # Download pip bootstrapper
-    python3 -m pip download pip -d dependencies/python/ 2>/dev/null || true
-    wget -q https://bootstrap.pypa.io/get-pip.py -O dependencies/python/get-pip.py 2>/dev/null || true
-    echo "  → $(ls dependencies/python/*.whl 2>/dev/null | wc -l) wheels + get-pip.py"
+    python3 -m pip download pip -d dependencies/python/ || true
+    wget https://bootstrap.pypa.io/get-pip.py -O dependencies/python/get-pip.py || true
+    echo "  → $(ls dependencies/python/*.whl | wc -l) wheels + get-pip.py"
 else
     echo "  ✗ pip download failed. Trying with source builds allowed..."
     python3 -m pip download --no-binary :all: -r server/requirements.txt -d dependencies/python/ || \
@@ -82,7 +79,7 @@ echo "[2/6] Downloading system packages (.deb)..."
 
 DEBS="python3.12-venv fonts-dejavu-core wget build-essential git curl libssl-dev zlib1g-dev"
 
-if ! command -v apt-get >/dev/null 2>&1; then
+if ! command -v apt-get; then
     echo "  ⚠ apt-get not available. Skipping system packages."
     echo "    Install manually on target: $DEBS"
 else
@@ -96,15 +93,15 @@ else
 
     # Download transitive dependencies
     ALL_DEPS=$(apt-cache depends --recurse --no-recommends --no-suggests \
-        --no-conflicts --no-breaks --no-replaces --no-enhances $DEBS 2>/dev/null \
+        --no-conflicts --no-breaks --no-replaces --no-enhances $DEBS \
         | grep "^\w" | sort -u || true)
     if [ -n "$ALL_DEPS" ]; then
         echo "  Downloading transitive dependencies..."
-        apt-get download $ALL_DEPS 2>/dev/null || true
+        apt-get download $ALL_DEPS || true
     fi
 
     cd "$ROOT_DIR"
-    SYS_DEBS=$(ls dependencies/system/*.deb 2>/dev/null | wc -l)
+    SYS_DEBS=$(ls dependencies/system/*.deb | wc -l)
     echo "  → $SYS_DEBS .deb files"
     du -sh dependencies/system/ | sed 's/^/  Size: /'
 fi
@@ -117,7 +114,7 @@ echo ""
 echo "[3/6] Downloading Ollama binary..."
 
 OLLAMA_URL="https://github.com/ollama/ollama/releases/latest/download/ollama-linux-amd64.tgz"
-if wget -q --timeout=60 "$OLLAMA_URL" -O dependencies/ollama/binary/ollama-linux-amd64.tgz; then
+if wget --timeout=60 "$OLLAMA_URL" -O dependencies/ollama/binary/ollama-linux-amd64.tgz; then
     echo "  → ollama-linux-amd64.tgz ($(du -h dependencies/ollama/binary/ollama-linux-amd64.tgz | cut -f1))"
 else
     echo "  ✗ Failed to download Ollama binary."
@@ -134,7 +131,7 @@ echo "[4/6] Downloading Ollama models..."
 
 # If ollama not in PATH, extract downloaded binary temporarily
 OLLAMA_TEMP=""
-if ! command -v ollama >/dev/null 2>&1; then
+if ! command -v ollama; then
     if [ -f "dependencies/ollama/binary/ollama-linux-amd64.tgz" ]; then
         echo "  Extracting Ollama binary temporarily..."
         OLLAMA_TEMP="$(mktemp -d)"
@@ -147,15 +144,15 @@ if ! command -v ollama >/dev/null 2>&1; then
     fi
 fi
 
-if command -v ollama >/dev/null 2>&1; then
+if command -v ollama; then
     # Start Ollama server if not running
     OLLAMA_PID=""
-    if ! curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+    if ! curl -s http://127.0.0.1:11434/api/tags; then
         echo "  Starting Ollama server..."
         ollama serve > /tmp/ollama-download.log 2>&1 &
         OLLAMA_PID=$!
         sleep 5
-        if ! curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+        if ! curl -s http://127.0.0.1:11434/api/tags; then
             echo "  ✗ Ollama server failed to start. Check /tmp/ollama-download.log"
         fi
     fi
@@ -180,7 +177,7 @@ if command -v ollama >/dev/null 2>&1; then
 
     # Stop temp server
     if [ -n "$OLLAMA_PID" ]; then
-        kill "$OLLAMA_PID" 2>/dev/null || true
+        kill "$OLLAMA_PID" || true
         sleep 2
     fi
 fi
@@ -206,8 +203,8 @@ from sentence_transformers import CrossEncoder
 print('  Downloading cross-encoder/ms-marco-MiniLM-L-6-v2...')
 CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 print('  ✓ Cross-encoder model downloaded')
-" 2>&1; then
-    CE_SIZE=$(du -sh "$ROOT_DIR/dependencies/models" 2>/dev/null | cut -f1 || echo "0")
+"; then
+    CE_SIZE=$(du -sh "$ROOT_DIR/dependencies/models" | cut -f1 || echo "0")
     echo "  Size: $CE_SIZE"
 else
     echo "  ✗ Failed to download cross-encoder model."
@@ -241,7 +238,7 @@ echo ""
 echo "  Total size: $(du -sh dependencies/ | cut -f1)"
 echo ""
 echo "  Contents:"
-du -sh dependencies/*/ 2>/dev/null | sed 's/^/    /'
+du -sh dependencies/*/ | sed 's/^/    /'
 echo ""
 echo "  Next steps:"
 echo "    1. Transfer the entire 'question_generator' folder to the target machine"

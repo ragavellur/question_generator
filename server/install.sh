@@ -134,7 +134,7 @@ if [ "$INSTALL_MODE" = "online" ]; then
 elif [ "$INSTALL_MODE" = "offline" ] && [ "$SYS_DEBS" -gt 0 ]; then
     echo "Installing system packages from local .deb files..."
     cd "$DEPS_DIR/system"
-    dpkg -i *.deb 2>/dev/null || true
+    dpkg -i *.deb || true
     cd "$APP_DIR"
     echo "✓ System packages installed (warnings above may be ignored if packages already present)"
 else
@@ -152,7 +152,7 @@ if python3 -m pip --version >/dev/null 2>&1; then
 else
     echo "  Installing pip..."
     if [ "$INSTALL_MODE" = "online" ]; then
-        wget -q https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py
+        wget https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py
         python3 /tmp/get-pip.py --user --break-system-packages
     elif [ -f "$DEPS_DIR/python/get-pip.py" ]; then
         python3 "$DEPS_DIR/python/get-pip.py" --user --break-system-packages
@@ -176,7 +176,7 @@ if [ -d ".venv" ] && [ ! -f ".venv/bin/pip" ]; then
 fi
 if [ ! -d ".venv" ]; then
     echo "  Creating virtual environment..."
-    if python3 -m venv .venv 2>/dev/null && [ -f ".venv/bin/pip" ]; then
+    if python3 -m venv .venv && [ -f ".venv/bin/pip" ]; then
         echo "  ✓ Virtual environment created"
     else
         echo "  ⚠ System lacks python3-venv. Installing directly..."
@@ -189,7 +189,7 @@ if [ "$INSTALL_DIRECT" = false ]; then
     source .venv/bin/activate
     PIP="pip"
     echo "  ✓ Virtual environment activated"
-    $PIP install --upgrade pip -q
+    $PIP install --upgrade pip
 fi
 
 # =====================================================================
@@ -223,7 +223,7 @@ else
     mkdir -p "$FONTS_DIR"
     if [ -f /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf ]; then
         cp /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf "$FONTS_DIR/"
-        cp /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf "$FONTS_DIR/" 2>/dev/null || true
+        cp /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf "$FONTS_DIR/" || true
         echo "✓ DejaVu Sans font installed"
     else
         echo "  ⚠ DejaVu Sans font not found. PDF will fall back to basic font."
@@ -316,7 +316,7 @@ echo ""
 echo "--- Cross-encoder reranker model ---"
 if [ "$INSTALL_MODE" = "online" ]; then
     echo "Caching cross-encoder reranker model..."
-    python3 -c "from sentence_transformers import CrossEncoder; CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')" 2>/dev/null
+    python3 -c "from sentence_transformers import CrossEncoder; CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')"
     echo "✓ Reranker model cached"
 elif [ -d "$DEPS_DIR/models" ]; then
     CE_FILES=$(find "$DEPS_DIR/models" -type f 2>/dev/null | wc -l)
