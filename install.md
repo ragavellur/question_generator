@@ -30,7 +30,9 @@ question_generator/
 │   ├── requirements.txt          # Python package list
 │   ├── .gitignore
 │   ├── AGENTS.md                 # Assistant rules
-│   └── README.md, ARCHITECTURE.md, INSTALL.md
+│   ├── README.md                 # Project overview (root symlink)
+│   ├── ARCHITECTURE.md           # System design (root symlink)
+│   └── INSTALL.md                # Install guide (root symlink)
 ├── data/                         # Runtime data (created by install/run)
 │   ├── chroma_db/                # Vector database (ChromaDB) + SQLite tasks
 │   └── uploaded_docs/            # Uploaded PDF files
@@ -38,12 +40,14 @@ question_generator/
 │   ├── python/                   # pip wheel files (.whl)
 │   ├── system/                   # .deb system packages
 │   ├── ollama/
-│   │   ├── binary/               # Ollama Linux binary (.tgz)
+│   │   ├── binary/               # Ollama Linux binary (.tar.zst, ~1.1 GB)
 │   │   └── models/               # Ollama model files (blobs + manifests)
 │   ├── models/                   # HuggingFace model cache (cross-encoder)
-│   └── tailwind/                 # Tailwind CSS Play CDN script
+│   └── tailwind/                 # Tailwind CSS Play CDN script (~400 KB)
 ├── download_dependencies.sh      # Prepares the dependencies/ folder
-├── install.md                    # This file
+├── README.md                     # Project overview
+├── ARCHITECTURE.md               # System architecture doc
+├── INSTALL.md                    # This file (also symlinked as server/INSTALL.md)
 └── .gitignore
 ```
 
@@ -112,12 +116,12 @@ bash download_dependencies.sh
 
 | Component | What's inside | Size | Estimated time |
 |-----------|--------------|------|----------------|
-| `dependencies/python/` | All pip wheel files (torch, chromadb, sentence-transformers, etc.) | ~4–6 GB | 10–30 min |
-| `dependencies/system/` | .deb packages (python3.12-venv, fonts, build tools) | ~50 MB | 2–5 min |
-| `dependencies/ollama/binary/` | Ollama Linux x86_64 binary | ~300 MB | 1–2 min |
+| `dependencies/python/` | All pip wheel files (torch, chromadb, sentence-transformers, etc.) | ~2.8 GB | 10–30 min |
+| `dependencies/system/` | .deb packages (python3.12-venv, fonts, build tools) | ~120 MB | 2–5 min |
+| `dependencies/ollama/binary/` | Ollama Linux x86_64 binary (`ollama-linux-amd64.tar.zst`) | ~1.1 GB | 2–5 min |
 | `dependencies/ollama/models/` | 3 Ollama models (qwen2.5:7b, nomic-embed-text, llama3.2:3b) | ~7 GB | 20–60 min |
-| `dependencies/models/` | Cross-encoder reranker (HuggingFace) | ~423 MB | 5–10 min |
-| `dependencies/tailwind/` | Tailwind CSS Play CDN script | ~4 MB | <1 min |
+| `dependencies/models/` | Cross-encoder reranker (HuggingFace cache) | ~423 MB | 5–10 min |
+| `dependencies/tailwind/` | Tailwind CSS Play CDN script | ~400 KB | <1 min |
 
 **Total: ~12–14 GB**
 
@@ -126,6 +130,7 @@ Once complete, the `dependencies/` folder contains everything needed for offline
 #### Important Notes
 
 - **Platform**: You MUST run `download_dependencies.sh` on Linux x86_64 (same architecture as the target machine). macOS downloads ARM64 wheels which won't work on Linux.
+- **zstd required**: The Ollama binary uses `.tar.zst` format. `download_dependencies.sh` auto-detects `zstd`; if missing, install it: `sudo apt-get install zstd`
 - **No internet machine available?** Use Docker:
   ```bash
   docker run --platform linux/amd64 -it -v $(pwd):/workspace ubuntu:24.04
@@ -289,9 +294,9 @@ If the target truly has no internet, use `apt-get download <package-name>` on th
 
 ### "Ollama not found" or "ollama: command not found"
 - Online: The install script failed. Run `curl -fsSL https://ollama.com/install.sh | sh` manually.
-- Offline: The binary wasn't downloaded. Check `dependencies/ollama/binary/ollama-linux-amd64.tgz` exists. Install manually:
+- Offline: The binary wasn't downloaded. Check `dependencies/ollama/binary/ollama-linux-amd64.tar.zst` exists. Install manually:
   ```bash
-  tar -xzf dependencies/ollama/binary/ollama-linux-amd64.tgz -C /usr/local/
+  zstd -dc dependencies/ollama/binary/ollama-linux-amd64.tar.zst | sudo tar xf - -C /usr/local/
   ```
 
 ### "Ollama models not found"
