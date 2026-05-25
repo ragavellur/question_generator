@@ -63,28 +63,67 @@ question_generator/
 | **Python** | 3.12 (comes with Ubuntu 24.04; for 22.04 use `deadsnakes` PPA) |
 | **RAM** | 8 GB minimum, 16 GB recommended |
 | **Disk** | 15 GB free (for models + data) |
-| **Git** | `apt-get install git` |
+| **Git (optional)** | Only needed if cloning instead of downloading ZIP: `sudo apt-get install git` |
+| **unzip (optional)** | Only needed if downloading ZIP: `sudo apt-get install unzip` |
 
 ---
 
 ## Quick Start (Online — Machine with Internet)
 
+### Option A: Download as ZIP (easiest, no git required)
+
+1. Open this link in your web browser:
+   **https://github.com/ragavellur/question_generator/archive/refs/heads/offline-installation.zip**
+
+2. The download will save a file called `offline-installation.zip` (about 200 KB).
+
+3. Extract the zip file:
+   ```bash
+   unzip offline-installation.zip
+   ```
+
+4. Rename the extracted folder (it will be named `question_generator-offline-installation`):
+   ```bash
+   mv question_generator-offline-installation question_generator
+   ```
+
+5. Go into the folder:
+   ```bash
+   cd question_generator
+   ```
+
+Now continue with step 2 below.
+
+### Option B: Clone with git (if you have git installed)
+
 ```bash
-# 1. Clone the repository
-git clone <repo-url> question_generator
+git clone https://github.com/ragavellur/question_generator.git question_generator
 cd question_generator
-
-# 2. Run the installer — choose "Online" when prompted
-bash server/install.sh
-
-# 3. Start the server
-DATA_DIR=../data bash server/run.sh
-
-# 4. Open in browser
-# http://localhost:8000
+git checkout offline-installation
 ```
 
-The installer will:
+---
+
+### 2. Run the installer
+
+```bash
+# Choose "Online" when the installer asks
+bash server/install.sh
+```
+
+### 3. Start the server
+
+```bash
+DATA_DIR=../data bash server/run.sh
+```
+
+### 4. Open in browser
+
+Go to **http://localhost:8000** in your web browser.
+
+---
+
+**What the installer does:**
 - Install system packages (`python3-venv`, `wget`, `fonts-dejavu-core`)
 - Create a Python virtual environment (`.venv/`)
 - Install all Python packages from PyPI
@@ -103,12 +142,41 @@ The offline installation is a **two-stage process**:
 
 Run this on **any Linux x86_64 machine with internet** (can be a different machine, a VM, or Docker container).
 
-```bash
-# Clone the repo on the internet-connected machine
-git clone <repo-url> question_generator
-cd question_generator
+#### Step 1: Get the project files
 
-# Download everything into dependencies/
+**Option A — Download as ZIP (easiest, no git required):**
+
+1. Open this link in your web browser on the internet machine:
+   **https://github.com/ragavellur/question_generator/archive/refs/heads/offline-installation.zip**
+
+2. Save the file (it will be called `offline-installation.zip`, about 200 KB).
+
+3. Extract the zip file:
+   ```bash
+   unzip offline-installation.zip
+   ```
+
+4. Rename the extracted folder:
+   ```bash
+   mv question_generator-offline-installation question_generator
+   ```
+
+5. Go into the folder:
+   ```bash
+   cd question_generator
+   ```
+
+**Option B — Clone with git:**
+```bash
+git clone https://github.com/ragavellur/question_generator.git question_generator
+cd question_generator
+git checkout offline-installation
+```
+
+#### Step 2: Download all dependencies
+
+```bash
+# This will take 30–90 minutes and download about 12–14 GB
 bash download_dependencies.sh
 ```
 
