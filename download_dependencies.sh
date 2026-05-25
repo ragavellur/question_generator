@@ -134,25 +134,28 @@ echo "[4/6] Downloading Ollama models..."
 # If ollama not in PATH, extract downloaded binary temporarily
 OLLAMA_TEMP=""
 if ! command -v ollama; then
+    OLLAMA_ARCHIVE=""
     if [ -f "dependencies/ollama/binary/ollama-linux-amd64.tar.zst" ]; then
-        echo "  Extracting Ollama binary temporarily..."
+        OLLAMA_ARCHIVE="dependencies/ollama/binary/ollama-linux-amd64.tar.zst"
+    elif [ -f "dependencies/ollama/binary/ollama-linux-amd64.tgz" ]; then
+        OLLAMA_ARCHIVE="dependencies/ollama/binary/ollama-linux-amd64.tgz"
+    fi
+    if [ -n "$OLLAMA_ARCHIVE" ]; then
+        echo "  Extracting Ollama binary temporarily from $(basename "$OLLAMA_ARCHIVE")..."
         OLLAMA_TEMP="$(mktemp -d)"
-        # Extract .tar.zst (prefer zstd, fall back to gzip for old tgz format)
-        if command -v zstd; then
-            zstd -dc "dependencies/ollama/binary/ollama-linux-amd64.tar.zst" | tar xf - -C "$OLLAMA_TEMP"
-        elif command -v tar && tar --help 2>&1 | grep -q zstd; then
-            tar -I zstd -xf "dependencies/ollama/binary/ollama-linux-amd64.tar.zst" -C "$OLLAMA_TEMP"
-        else
-            # Fallback: install zstd via pip from local or download
-            echo "  zstd not found, installing..."
-            if command -v pip; then
-                pip install zstandard -q
-                zstd -dc "dependencies/ollama/binary/ollama-linux-amd64.tar.zst" | tar xf - -C "$OLLAMA_TEMP"
-            else
-                echo "  ✗ zstd not available. Install it: sudo apt install zstd"
-            fi
-        fi
-        export PATH="$OLLAMA_TEMP:$PATH"
+        case "$OLLAMA_ARCHIVE" in
+            *.tar.zst)
+                if command -v zstd; then
+                    zstd -dc "$OLLAMA_ARCHIVE" | tar xf - -C "$OLLAMA_TEMP"
+                else
+                    echo "  zstd not found. Install: sudo apt install zstd"
+                fi
+                ;;
+            *.tgz)
+                tar -xzf "$OLLAMA_ARCHIVE" -C "$OLLAMA_TEMP"
+                ;;
+        esac
+        export PATH="$OLLAMA_TEMP/bin:$PATH"
         if command -v ollama; then
             echo "  ✓ Ollama ready at $(which ollama)"
         else
