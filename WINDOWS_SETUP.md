@@ -30,28 +30,15 @@ This guide explains how to set up the Question Generator on a Windows computer. 
 
 ## Method 1: Automated Installation (Recommended)
 
-### Step 1: Get the project files
+### Step 1: Extract the project files
 
-**Option A — Download as ZIP (easiest):**
+1. Locate the ZIP file you received (e.g., `question_generator.zip` or `offline-installation.zip`)
 
-1. Open this link in your web browser:
-   https://github.com/ragavellur/question_generator/archive/refs/heads/offline-installation.zip
+2. Right-click the zip file and select **Extract All...**
 
-2. The file `offline-installation.zip` will download (about 200 KB).
+3. Choose a destination folder (e.g., `C:\question_generator`)
 
-3. Right-click the zip file and select **Extract All...**
-
-4. Choose a destination folder (e.g., `C:\question_generator`)
-
-5. The extracted folder will be named `question_generator-offline-installation`.
-   Rename it to `question_generator` (right-click → Rename).
-
-**Option B — Clone with git:**
-```
-git clone https://github.com/ragavellur/question_generator.git question_generator
-cd question_generator
-git checkout offline-installation
-```
+4. Click **Extract**
 
 ### Step 2: Choose your installation flow
 
@@ -341,9 +328,10 @@ Or copy the file from the project dependencies if you did an offline setup.
 
 | File | Purpose |
 |------|---------|
+| `WINDOWS_SETUP.md` | This guide |
 | `download_dependencies_windows.ps1` | Download all dependencies for offline Windows install |
 | `server/install_windows.ps1` | Install everything on Windows (online or offline) |
-| `server/run_windows.ps1` | Start the server (created during installation) |
+| `server/run_windows.ps1` | Start the server |
 | `dependencies/python/` | Python wheel files (.whl) |
 | `dependencies/ollama/binary/OllamaSetup.exe` | Ollama Windows installer |
 | `dependencies/ollama/models/` | Ollama model files (blobs + manifests) |
