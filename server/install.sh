@@ -74,7 +74,9 @@ if [ "$INSTALL_MODE" = "offline" ]; then
     fi
 
     # 3. Ollama binary
-    if [ -f "$DEPS_DIR/ollama/binary/ollama-linux-amd64.tgz" ]; then
+    if [ -f "$DEPS_DIR/ollama/binary/ollama-linux-amd64.tar.zst" ]; then
+        echo "  Ollama binary: found ($(du -h "$DEPS_DIR/ollama/binary/ollama-linux-amd64.tar.zst" | cut -f1))"
+    elif [ -f "$DEPS_DIR/ollama/binary/ollama-linux-amd64.tgz" ]; then
         echo "  Ollama binary: found ($(du -h "$DEPS_DIR/ollama/binary/ollama-linux-amd64.tgz" | cut -f1))"
     else
         echo "  ✗ Ollama binary not found at dependencies/ollama/binary/"
