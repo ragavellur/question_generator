@@ -7,7 +7,7 @@ import logging
 from collections import defaultdict
 
 from app.config import DOMAIN_DEFINITIONS, SUBTYPE_INSTRUCTIONS, CHUNKS_PER_TYPE_CALL, CHUNK_CONTENT_MAX_CHARS
-from app.services.llm_client import chat, _extract_json, _sanitize_json_text
+from app.services.llm_client import chat, _extract_json, _extract_partial_json, _sanitize_json_text
 from app.services.vector_store import query_chunks, get_chunks_by_ids, get_chunks_by_filter
 from app.services.embedding import prepare_query
 from app.models.schemas import QuestionConfig
@@ -158,13 +158,15 @@ async def _call_type(qt: str, count: int, context_chunks: list[dict], domains: l
     try:
         raw = await chat(prompt=prompt, system=SYSTEM_PROMPT, temperature=0.3, num_predict=num_predict, label=label)
         raw = _sanitize_json_text(raw)
-        result = json.loads(raw)
+        result = json.loads(raw, strict=False)
     except json.JSONDecodeError:
         try:
             result = _extract_json(raw)
         except Exception as extract_err:
-            _log_raw_on_fail(raw, label, f"JSON decode + _extract_json failed: {extract_err}")
-            raise RuntimeError(f"Non-JSON response: {raw[:400]}")
+            result = _extract_partial_json(raw)
+            if not result:
+                _log_raw_on_fail(raw, label, f"JSON decode + _extract_json + partial all failed: {extract_err}")
+                raise RuntimeError(f"Non-JSON response: {raw[:400]}")
     except Exception as e:
         _log_raw_on_fail(raw, label, f"HTTP/connection error: {e}")
         raise RuntimeError(f"Connection error: {e}")

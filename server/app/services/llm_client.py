@@ -80,15 +80,48 @@ def _extract_json(text: str):
         elif ch in ("}", "]"):
             depth -= 1
             if depth == 0:
-                return json.loads(text[: i + 1])
+                return json.loads(text[: i + 1], strict=False)
     raise ValueError(f"Unterminated JSON in response: {text[:200]}")
+
+
+def _extract_partial_json(text: str) -> list[dict]:
+    decoder = json.JSONDecoder(strict=False)
+    idx = text.find('"questions"')
+    if idx == -1:
+        idx = text.find('[')
+        if idx == -1:
+            return []
+    idx = text.find('[', idx)
+    if idx == -1:
+        return []
+    idx += 1
+    seen = set()
+    results = []
+    while idx < len(text):
+        text_slice = text[idx:]
+        text_slice = text_slice.lstrip()
+        if not text_slice:
+            break
+        if text_slice[0] in (']', '}'):
+            break
+        try:
+            obj, end = decoder.raw_decode(text_slice)
+            if isinstance(obj, dict) and "question_text" in obj:
+                key = (obj.get("question_text", ""), obj.get("question_type", ""))
+                if key not in seen:
+                    seen.add(key)
+                    results.append(obj)
+            idx += len(text_slice) - len(text_slice[end:])
+        except json.JSONDecodeError:
+            break
+    return results
 
 
 async def chat_json(prompt: str, system: str | None = None, model: str | None = None, temperature: float = 0.1, num_predict: int = 8192) -> dict | list:
     content = await chat(prompt, system=system, model=model, temperature=temperature, num_predict=num_predict)
     content = _sanitize_json_text(content)
     try:
-        return json.loads(content)
+        return json.loads(content, strict=False)
     except json.JSONDecodeError:
         return _extract_json(content)
 
