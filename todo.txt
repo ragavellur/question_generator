@@ -1,1 +1,111 @@
-- implement _extract_partial_json() to salvage valid questions from truncated LLM responses, then let retry loop fill gaps
+Task: Partial JSON extraction from truncated LLM responses
+================================================================================
+
+Problem
+-------
+When the LLM returns invalid JSON (e.g., truncated mid-response, or escaped
+literals like \m, \e), all questions in the batch are discarded and the LLM
+is called again from scratch. This wastes time (~30s per LLM call) and loses
+valid questions that were perfectly formed.
+
+Root cause examples
+-------------------
+1. Invalid escapes: "answer": "L' can be obtained fro\m..." -> json.loads rejects \m
+2. Truncation: The LLM stops mid-string, mid-object, or mid-array — no closing }/]
+
+
+Changes needed
+==============
+
+File 1: server/app/services/llm_client.py
+-----------------------------------------
+
+a) Add strict=False to all json.loads calls (fixes escaped-literal errors)
+
+   Line 83: json.loads(text[:i+1]) -> json.loads(text[:i+1], strict=False)
+   Line 91: json.loads(content)    -> json.loads(content, strict=False)
+
+b) Add new function _extract_partial_json(raw: str) -> list[dict]
+
+   Insert after _extract_json() (around line 85).
+
+   Algorithm:
+   - Use json.JSONDecoder(strict=False).raw_decode() which returns (obj, end_index)
+   - Locate the "questions" array in the text
+   - Walk through the array, raw_decode() each element until one fails
+   - Return whatever complete objects were found before the failure point
+   - Deduplicate by (question_text, question_type)
+
+   Implementation:
+
+   def _extract_partial_json(text: str) -> list[dict]:
+       decoder = json.JSONDecoder(strict=False)
+       idx = text.find('"questions"')
+       if idx == -1:
+           idx = text.find('[')
+           if idx == -1:
+               return []
+       idx = text.find('[', idx)
+       if idx == -1:
+           return []
+       idx += 1
+       seen = set()
+       results = []
+       while idx < len(text):
+           text_slice = text[idx:]
+           text_slice = text_slice.lstrip()
+           if not text_slice:
+               break
+           if text_slice[0] in (']', '}'):
+               break
+           try:
+               obj, end = decoder.raw_decode(text_slice)
+               if isinstance(obj, dict) and "question_text" in obj:
+                   key = (obj.get("question_text", ""), obj.get("question_type", ""))
+                   if key not in seen:
+                       seen.add(key)
+                       results.append(obj)
+               idx += len(text_slice) - len(text_slice[end:])
+           except json.JSONDecodeError:
+               break
+       return results
+
+
+File 2: server/app/services/question_generator.py
+--------------------------------------------------
+
+a) Line 161: Change json.loads(raw) -> json.loads(raw, strict=False)
+
+b) Update the fallback block (~lines 162-170, in _call_type) to add
+   partial extraction before giving up:
+
+   try:
+       result = json.loads(raw, strict=False)
+   except json.JSONDecodeError:
+       try:
+           result = _extract_json(raw)
+       except Exception:
+           result = _extract_partial_json(raw)         # NEW
+           if not result:                              # nothing salvageable
+               _log_raw_on_fail(raw, label, f"Non-JSON response")
+               raise RuntimeError(f"Non-JSON response: {raw[:400]}")
+
+
+How the full chain works (3 tries before retry)
+------------------------------------------------
+Try 1: json.loads(raw, strict=False)      — Valid JSON + bad escapes (\m, \e)
+Try 2: _extract_json(raw)                 — JSON buried in markdown/extra text
+Try 3: _extract_partial_json(raw)         — Array with truncated last element
+Try 4+: Retry loop (already exists)       — Everything failed, regenerate from scratch
+
+Retry behavior after partial recovery
+-------------------------------------
+The existing retry loop in generate_questions_stream already handles this:
+- Calculates need = count_per_type - type_final.get(qt, 0)
+- Calls _call_type(qt, need + 1, ...) to fill gaps
+- No changes needed — if 2 of 3 questions extracted, it asks for 1 more
+
+Files to modify (2 files)
+-------------------------
+- server/app/services/llm_client.py       — add _extract_partial_json() + 2x strict=False
+- server/app/services/question_generator.py — add strict=False + partial extraction fallback
