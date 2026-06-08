@@ -1,0 +1,1 @@
+- implement _extract_partial_json() to salvage valid questions from truncated LLM responses, then let retry loop fill gaps
